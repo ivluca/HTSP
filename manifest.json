@@ -15,7 +15,9 @@
   ],
   "permissions": [
     "declarativeNetRequest",
-    "sidePanel"
+    "sidePanel",
+    "tabs",
+    "bookmarks"
   ],
   "icons": {
     "128": "images/icon.png",
