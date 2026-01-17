@@ -56,6 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function renderBrowserTabs() {
+    // Only render if the tab manager is visible
+    if (document.getElementById('tab-manager-container').classList.contains('hidden')) {
+      return;
+    }
+
     pinnedTabsList.innerHTML = '';
     otherTabsList.innerHTML = '';
 
@@ -64,18 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.bookmarks.getTree()
     ]);
 
-    const bookmarkUrls = new Set();
-    function extractUrls(nodes) {
+    const bookmarkMap = new Map();
+    function extractBookmarkData(nodes) {
       for (const node of nodes) {
-        if (node.url) bookmarkUrls.add(node.url);
-        if (node.children) extractUrls(node.children);
+        if (node.url) bookmarkMap.set(node.url, node.title);
+        if (node.children) extractBookmarkData(node.children);
       }
     }
-    extractUrls(allBookmarks);
+    extractBookmarkData(allBookmarks);
 
     let pinnedCount = 0;
     for (const tab of browserTabs) {
-      const tabItem = createTabItem(tab, bookmarkUrls);
+      const tabItem = createTabItem(tab, bookmarkMap);
       if (tab.pinned) {
         pinnedTabsList.appendChild(tabItem);
         pinnedCount++;
@@ -88,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   }
 
-  function createTabItem(tab, bookmarkUrls) {
+  function createTabItem(tab, bookmarkMap) {
     const tabItem = document.createElement('div');
     tabItem.classList.add('browser-tab-item');
     
@@ -97,7 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const clickablePart = document.createElement('div');
     clickablePart.classList.add('browser-tab-item-main-clickable');
-    clickablePart.title = tab.title;
+    
+    const isBookmarked = bookmarkMap.has(tab.url);
+    const bookmarkTitle = isBookmarked ? bookmarkMap.get(tab.url) : '';
+    const displayTitle = bookmarkTitle || tab.title;
+    
+    clickablePart.title = displayTitle;
     clickablePart.addEventListener('click', () => {
       chrome.tabs.update(tab.id, { active: true });
       chrome.windows.update(tab.windowId, { focused: true });
@@ -108,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clickablePart.appendChild(favicon);
 
     const title = document.createElement('span');
-    title.textContent = tab.title;
+    title.textContent = displayTitle;
     clickablePart.appendChild(title);
     
     const actions = document.createElement('div');
@@ -117,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pinBtn = createActionButton('pin', tab.pinned, () => {
       chrome.tabs.update(tab.id, { pinned: !tab.pinned }, renderBrowserTabs);
     });
-    const isBookmarked = bookmarkUrls.has(tab.url);
     const bookmarkBtn = createActionButton('star', isBookmarked, async () => {
       if (isBookmarked) {
         const bookmarks = await chrome.bookmarks.search({url: tab.url});
@@ -153,6 +162,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     return btn;
   }
+
+  // --- Event Listeners for real-time updates ---
+  chrome.tabs.onCreated.addListener(renderBrowserTabs);
+  chrome.tabs.onRemoved.addListener(renderBrowserTabs);
+  chrome.tabs.onUpdated.addListener(renderBrowserTabs);
+  chrome.tabs.onMoved.addListener(renderBrowserTabs);
+  chrome.bookmarks.onCreated.addListener(renderBrowserTabs);
+  chrome.bookmarks.onRemoved.addListener(renderBrowserTabs);
+  chrome.bookmarks.onChanged.addListener(renderBrowserTabs);
+
 
   // --- Original Logic ---
   allTabs.forEach(tab => {
