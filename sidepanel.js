@@ -1,11 +1,160 @@
 document.addEventListener('DOMContentLoaded', () => {
   const tabsContainer = document.querySelector('.tabs');
   const allTabs = document.querySelectorAll('.tab');
-  const iframes = document.querySelectorAll('.ai-frame');
+  const iframesAndContainers = document.querySelectorAll('.ai-frame');
   const dropdownBtn = document.getElementById('dropdown-btn');
   const dropdownContent = document.getElementById('dropdown-content');
+  
+  // Tab Manager Elements
+  const tabManagerHeader = document.getElementById('tab-manager-header');
+  const pinnedTabsSection = document.getElementById('pinned-tabs-section');
+  const pinnedTabsList = document.getElementById('pinned-tabs-list');
+  const otherTabsList = document.getElementById('other-tabs-list');
 
-  // --- Populate Dropdown ---
+  let showLinks = false;
+
+  const icons = {
+    link: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6" /><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /><path d="M13 18l-.397 .534a5 5 0 0 1 -7.071 -7.072l.534 -.464" /></svg>',
+    pin: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4" /><path d="M9 15l-4.5 4.5" /><path d="M14.5 4l5.5 5.5" /></svg>',
+    star: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" /></svg>',
+    reload: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>',
+    close: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>'
+  };
+
+  function setupTabManagerHeader() {
+    tabManagerHeader.innerHTML = '';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Tab Manager';
+    
+    const actions = document.createElement('div');
+    actions.classList.add('header-actions');
+
+    const showLinksBtn = createActionButton('link', showLinks, () => {
+      showLinks = !showLinks;
+      renderBrowserTabs();
+    });
+    showLinksBtn.title = "Show/Hide Links";
+
+    const reloadAllBtn = createActionButton('reload', false, async () => {
+      const tabs = await chrome.tabs.query({});
+      for (const tab of tabs) await chrome.tabs.reload(tab.id);
+    });
+    reloadAllBtn.title = "Reload All Tabs";
+
+    const closeAllBtn = createActionButton('close', false, async () => {
+      if (confirm('Are you sure you want to close all non-pinned tabs?')) {
+        const tabs = await chrome.tabs.query({ pinned: false });
+        const tabIds = tabs.map(t => t.id);
+        chrome.tabs.remove(tabIds, renderBrowserTabs);
+      }
+    });
+    closeAllBtn.title = "Close All Non-Pinned Tabs";
+
+    actions.append(showLinksBtn, reloadAllBtn, closeAllBtn);
+    tabManagerHeader.append(title, actions);
+  }
+
+  async function renderBrowserTabs() {
+    pinnedTabsList.innerHTML = '';
+    otherTabsList.innerHTML = '';
+
+    const [browserTabs, allBookmarks] = await Promise.all([
+      chrome.tabs.query({}),
+      chrome.bookmarks.getTree()
+    ]);
+
+    const bookmarkUrls = new Set();
+    function extractUrls(nodes) {
+      for (const node of nodes) {
+        if (node.url) bookmarkUrls.add(node.url);
+        if (node.children) extractUrls(node.children);
+      }
+    }
+    extractUrls(allBookmarks);
+
+    let pinnedCount = 0;
+    for (const tab of browserTabs) {
+      const tabItem = createTabItem(tab, bookmarkUrls);
+      if (tab.pinned) {
+        pinnedTabsList.appendChild(tabItem);
+        pinnedCount++;
+      } else {
+        otherTabsList.appendChild(tabItem);
+      }
+    }
+    
+    pinnedTabsSection.style.display = pinnedCount > 0 ? 'block' : 'none';
+    document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
+  }
+
+  function createTabItem(tab, bookmarkUrls) {
+    const tabItem = document.createElement('div');
+    tabItem.classList.add('browser-tab-item');
+    
+    const mainPart = document.createElement('div');
+    mainPart.classList.add('browser-tab-item-main');
+    
+    const clickablePart = document.createElement('div');
+    clickablePart.classList.add('browser-tab-item-main-clickable');
+    clickablePart.title = tab.title;
+    clickablePart.addEventListener('click', () => {
+      chrome.tabs.update(tab.id, { active: true });
+      chrome.windows.update(tab.windowId, { focused: true });
+    });
+
+    const favicon = document.createElement('img');
+    favicon.src = tab.favIconUrl || 'images/icon.png';
+    clickablePart.appendChild(favicon);
+
+    const title = document.createElement('span');
+    title.textContent = tab.title;
+    clickablePart.appendChild(title);
+    
+    const actions = document.createElement('div');
+    actions.classList.add('browser-tab-actions');
+
+    const pinBtn = createActionButton('pin', tab.pinned, () => {
+      chrome.tabs.update(tab.id, { pinned: !tab.pinned }, renderBrowserTabs);
+    });
+    const isBookmarked = bookmarkUrls.has(tab.url);
+    const bookmarkBtn = createActionButton('star', isBookmarked, async () => {
+      if (isBookmarked) {
+        const bookmarks = await chrome.bookmarks.search({url: tab.url});
+        for (const bm of bookmarks) await chrome.bookmarks.remove(bm.id);
+      } else {
+        await chrome.bookmarks.create({title: tab.title, url: tab.url});
+      }
+      renderBrowserTabs();
+    });
+    const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
+    const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id, () => tabItem.remove()));
+
+    actions.append(pinBtn, bookmarkBtn, reloadBtn, closeBtn);
+    mainPart.append(clickablePart, actions);
+
+    const urlPart = document.createElement('div');
+    urlPart.classList.add('tab-url');
+    if (showLinks) urlPart.classList.add('visible');
+    urlPart.textContent = tab.url;
+
+    tabItem.append(mainPart, urlPart);
+    return tabItem;
+  }
+
+  function createActionButton(iconName, isActive, onClick) {
+    const btn = document.createElement('button');
+    btn.classList.add('action-btn', iconName);
+    if (isActive) btn.classList.add('active');
+    btn.innerHTML = icons[iconName];
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  // --- Original Logic ---
   allTabs.forEach(tab => {
     const item = document.createElement('a');
     item.textContent = tab.textContent;
@@ -16,87 +165,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const dropdownItems = document.querySelectorAll('.dropdown-item');
 
-  // --- Function to Switch Tabs ---
   function switchTab(targetId) {
-    // Update iframes
-    iframes.forEach(iframe => iframe.classList.add('hidden'));
-    const targetIframe = document.getElementById(targetId);
-    if (targetIframe) {
-      targetIframe.classList.remove('hidden');
+    iframesAndContainers.forEach(c => c.classList.add('hidden'));
+    const target = document.getElementById(targetId);
+    if (target) target.classList.remove('hidden');
+
+    if (targetId === 'tab-manager-container') {
+      renderBrowserTabs();
     }
 
-    // Update active tab style
     allTabs.forEach(t => {
       if (t.dataset.target === targetId) {
         t.classList.add('active');
-        // Scroll the active tab into view
         t.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       } else {
         t.classList.remove('active');
       }
     });
     
-    // Close dropdown
     dropdownContent.classList.remove('show');
   }
 
-  // --- Event Listeners ---
-  // 1. For tabs in the scrollable header
-  allTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      switchTab(tab.dataset.target);
-    });
-  });
-
-  // 2. For dropdown button
-  dropdownBtn.addEventListener('click', (event) => {
-    event.stopPropagation();
+  allTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.target)));
+  dropdownItems.forEach(item => item.addEventListener('click', () => switchTab(item.dataset.target)));
+  dropdownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     dropdownContent.classList.toggle('show');
   });
-
-  // 3. For items in the dropdown menu
-  dropdownItems.forEach(item => {
-    item.addEventListener('click', () => {
-      switchTab(item.dataset.target);
-    });
-  });
-
-  // 4. To close dropdown when clicking outside
   window.addEventListener('click', () => {
     if (dropdownContent.classList.contains('show')) {
       dropdownContent.classList.remove('show');
     }
   });
-  
-  // --- Drag-to-scroll for trackpad-like experience ---
-  let isDown = false;
-  let startX;
-  let scrollLeft;
 
+  let isDown = false, startX, scrollLeft;
   tabsContainer.addEventListener('mousedown', (e) => {
-    // Prevent starting drag on the dropdown button
     if (e.target.closest('.dropdown')) return;
     isDown = true;
     startX = e.pageX - tabsContainer.offsetLeft;
     scrollLeft = tabsContainer.scrollLeft;
   });
-  tabsContainer.addEventListener('mouseleave', () => {
-    isDown = false;
-  });
-  tabsContainer.addEventListener('mouseup', () => {
-    isDown = false;
-  });
+  tabsContainer.addEventListener('mouseleave', () => isDown = false);
+  tabsContainer.addEventListener('mouseup', () => isDown = false);
   tabsContainer.addEventListener('mousemove', (e) => {
     if(!isDown) return;
     e.preventDefault();
     const x = e.pageX - tabsContainer.offsetLeft;
-    const walk = (x - startX) * 2; // Adjust multiplier for scroll speed
+    const walk = (x - startX) * 2;
     tabsContainer.scrollLeft = scrollLeft - walk;
   });
 
-  // --- Final Setup ---
   document.getElementById('year').textContent = new Date().getFullYear();
-  // Set initial active tab
-  allTabs[0].classList.add('active');
-  iframes[0].classList.remove('hidden');
+  setupTabManagerHeader();
+  switchTab('tab-manager-container');
 });

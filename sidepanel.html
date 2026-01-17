@@ -6,7 +6,8 @@
   <body>
     <div id="header">
       <div class="tabs">
-        <div class="tab active" data-target="chatgpt-frame">ChatGPT</div>
+        <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
+        <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
         <div class="tab" data-target="translate-frame">Translate</div>
         <div class="tab" data-target="it-tools-frame">IT Tools</div>
@@ -24,7 +25,18 @@
     </div>
 
     <div class="iframe-container">
-      <iframe id="chatgpt-frame" class="ai-frame" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
+      <div id="tab-manager-container" class="ai-frame" style="overflow-y: auto; padding: 8px;">
+        <div id="tab-manager-header"></div>
+        <div id="pinned-tabs-section">
+          <h3 class="section-title">Pinned Tabs</h3>
+          <div id="pinned-tabs-list"></div>
+        </div>
+        <div id="other-tabs-section">
+          <h3 class="section-title">Other Tabs</h3>
+          <div id="other-tabs-list"></div>
+        </div>
+      </div>
+      <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
       <iframe id="translate-frame" class="ai-frame hidden" src="https://chatgpt.com/translate/" allow="clipboard-write; microphone"></iframe>
       <iframe id="it-tools-frame" class="ai-frame hidden" src="https://it-tools.tech/" allow="clipboard-write; microphone"></iframe>
