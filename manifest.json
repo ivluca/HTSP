@@ -1,8 +1,8 @@
 {
-  "name": "AI Side Panel",
+  "name": "HTSP",
   "version": "1.0.0",
   "manifest_version": 3,
-  "description": "Opens ChatGPT and Gemini in Chrome's side panel",
+  "description": "Help Tools Side Panel",
   "host_permissions": [
     "*://*.openai.com/*",
     "*://*.chatgpt.com/*",
@@ -21,7 +21,7 @@
     "16": "images/icon.png"
   },
   "action": {
-    "default_title": "AI Side Panel"
+    "default_title": "HTSP"
   },
   "background": {
     "service_worker": "service-worker.js"
