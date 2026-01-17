@@ -25,15 +25,15 @@
     </div>
 
     <div class="iframe-container">
-      <div id="tab-manager-container" class="ai-frame" style="overflow-y: auto; padding: 8px;">
+      <div id="tab-manager-container" class="ai-frame" style="overflow-y: auto;">
         <div id="tab-manager-header"></div>
+        <input type="text" id="search-box" placeholder="Search tabs...">
         <div id="pinned-tabs-section">
           <h3 class="section-title">Pinned Tabs</h3>
           <div id="pinned-tabs-list"></div>
         </div>
-        <div id="other-tabs-section">
-          <h3 class="section-title">Other Tabs</h3>
-          <div id="other-tabs-list"></div>
+        <div id="window-groups-container">
+          <!-- Window groups will be rendered here by JS -->
         </div>
       </div>
       <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
