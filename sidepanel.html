@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>AI Side Panel</title>
+    <title>HTSP</title>
     <style>
       @font-face {
         font-family: 'SN Pro';
@@ -22,11 +22,13 @@
       <div class="tabs">
         <div class="tab active" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
+        <div class="tab" data-target="translate-frame">Translate</div>
       </div>
     </div>
     <div class="iframe-container">
       <iframe id="chatgpt-frame" class="ai-frame" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
+      <iframe id="translate-frame" class="ai-frame hidden" src="https://chatgpt.com/translate/" allow="clipboard-write; microphone"></iframe>
     </div>
     <div id="footer">
       <span>&copy;<span id="year"></span> - Developed by ivth</span>
