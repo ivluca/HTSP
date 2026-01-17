@@ -68,4 +68,25 @@ function initiate() {
   });
 }
 
+function sendMessageToSidePanel(message) {
+  chrome.runtime.sendMessage(message).catch(err => {
+    // Ignore errors, the side panel might not be open
+  });
+}
+
+// Comprehensive listeners
+chrome.tabs.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onUpdated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onMoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onAttached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onDetached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+
+chrome.windows.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.windows.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+
+chrome.bookmarks.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.bookmarks.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.bookmarks.onChanged.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+
 initiate();

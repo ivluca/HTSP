@@ -7,11 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Tab Manager Elements
   const tabManagerHeader = document.getElementById('tab-manager-header');
+  const searchBox = document.getElementById('search-box');
   const pinnedTabsSection = document.getElementById('pinned-tabs-section');
   const pinnedTabsList = document.getElementById('pinned-tabs-list');
-  const otherTabsList = document.getElementById('other-tabs-list');
+  const windowGroupsContainer = document.getElementById('window-groups-container');
 
   let showLinks = false;
+  let renderTimeout;
+  let searchTerm = '';
 
   const icons = {
     link: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6" /><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /><path d="M13 18l-.397 .534a5 5 0 0 1 -7.071 -7.072l.534 -.464" /></svg>',
@@ -37,8 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showLinksBtn.title = "Show/Hide Links";
 
     const reloadAllBtn = createActionButton('reload', false, async () => {
-      const tabs = await chrome.tabs.query({});
-      for (const tab of tabs) await chrome.tabs.reload(tab.id);
+      if (confirm('Are you sure you want to reload all tabs?')) {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) await chrome.tabs.reload(tab.id);
+      }
     });
     reloadAllBtn.title = "Reload All Tabs";
 
@@ -55,18 +60,21 @@ document.addEventListener('DOMContentLoaded', () => {
     tabManagerHeader.append(title, actions);
   }
 
-  async function renderBrowserTabs() {
-    // Only render if the tab manager is visible
-    if (document.getElementById('tab-manager-container').classList.contains('hidden')) {
-      return;
-    }
+  function requestRenderBrowserTabs() {
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => renderBrowserTabs(searchTerm), 100);
+  }
+
+  async function renderBrowserTabs(filter = '') {
+    if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
     pinnedTabsList.innerHTML = '';
-    otherTabsList.innerHTML = '';
+    windowGroupsContainer.innerHTML = '';
 
-    const [browserTabs, allBookmarks] = await Promise.all([
+    const [browserTabs, allBookmarks, currentWindow] = await Promise.all([
       chrome.tabs.query({}),
-      chrome.bookmarks.getTree()
+      chrome.bookmarks.getTree(),
+      chrome.windows.getCurrent()
     ]);
 
     const bookmarkMap = new Map();
@@ -78,22 +86,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     extractBookmarkData(allBookmarks);
 
+    const windows = new Map();
     let pinnedCount = 0;
+    const lowerCaseFilter = filter.toLowerCase();
+
     for (const tab of browserTabs) {
-      const tabItem = createTabItem(tab, bookmarkMap);
-      if (tab.pinned) {
-        pinnedTabsList.appendChild(tabItem);
-        pinnedCount++;
-      } else {
-        otherTabsList.appendChild(tabItem);
+      const displayTitle = bookmarkMap.get(tab.url) || tab.title;
+      const matchesFilter = filter === '' || 
+                            displayTitle.toLowerCase().includes(lowerCaseFilter) || 
+                            (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
+
+      if (matchesFilter) {
+        const tabItem = createTabItem(tab, bookmarkMap, displayTitle);
+        if (tab.pinned) {
+          pinnedTabsList.appendChild(tabItem);
+          pinnedCount++;
+        } else {
+          if (!windows.has(tab.windowId)) {
+            windows.set(tab.windowId, []);
+          }
+          windows.get(tab.windowId).push(tabItem);
+        }
       }
     }
     
     pinnedTabsSection.style.display = pinnedCount > 0 ? 'block' : 'none';
+
+    let windowCounter = 1;
+    for (const [windowId, tabItems] of windows) {
+      const group = document.createElement('div');
+      const title = document.createElement('h3');
+      title.classList.add('section-title');
+      
+      const isCurrentWindow = windowId === currentWindow.id;
+      const titleText = isCurrentWindow ? 'Current Window' : `Window ${windowCounter}`;
+      title.textContent = `${titleText} (${tabItems.length} tabs)`;
+      
+      group.appendChild(title);
+      tabItems.forEach(tabItem => group.appendChild(tabItem));
+      windowGroupsContainer.appendChild(group);
+      
+      if (!isCurrentWindow) windowCounter++;
+    }
+
     document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   }
 
-  function createTabItem(tab, bookmarkMap) {
+  function createTabItem(tab, bookmarkMap, displayTitle) {
     const tabItem = document.createElement('div');
     tabItem.classList.add('browser-tab-item');
     
@@ -102,11 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const clickablePart = document.createElement('div');
     clickablePart.classList.add('browser-tab-item-main-clickable');
-    
-    const isBookmarked = bookmarkMap.has(tab.url);
-    const bookmarkTitle = isBookmarked ? bookmarkMap.get(tab.url) : '';
-    const displayTitle = bookmarkTitle || tab.title;
-    
     clickablePart.title = displayTitle;
     clickablePart.addEventListener('click', () => {
       chrome.tabs.update(tab.id, { active: true });
@@ -125,8 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
     actions.classList.add('browser-tab-actions');
 
     const pinBtn = createActionButton('pin', tab.pinned, () => {
-      chrome.tabs.update(tab.id, { pinned: !tab.pinned }, renderBrowserTabs);
+      chrome.tabs.update(tab.id, { pinned: !tab.pinned }, requestRenderBrowserTabs);
     });
+    const isBookmarked = bookmarkMap.has(tab.url);
     const bookmarkBtn = createActionButton('star', isBookmarked, async () => {
       if (isBookmarked) {
         const bookmarks = await chrome.bookmarks.search({url: tab.url});
@@ -134,10 +169,18 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         await chrome.bookmarks.create({title: tab.title, url: tab.url});
       }
-      renderBrowserTabs();
+      requestRenderBrowserTabs();
     });
-    const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
-    const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id, () => tabItem.remove()));
+    const reloadBtn = createActionButton('reload', false, () => {
+      if (confirm(`Are you sure you want to reload "${displayTitle}"?`)) {
+        chrome.tabs.reload(tab.id);
+      }
+    });
+    const closeBtn = createActionButton('close', false, () => {
+      if (confirm(`Are you sure you want to close "${displayTitle}"?`)) {
+        chrome.tabs.remove(tab.id, () => tabItem.remove());
+      }
+    });
 
     actions.append(pinBtn, bookmarkBtn, reloadBtn, closeBtn);
     mainPart.append(clickablePart, actions);
@@ -163,17 +206,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return btn;
   }
 
-  // --- Event Listeners for real-time updates ---
-  chrome.tabs.onCreated.addListener(renderBrowserTabs);
-  chrome.tabs.onRemoved.addListener(renderBrowserTabs);
-  chrome.tabs.onUpdated.addListener(renderBrowserTabs);
-  chrome.tabs.onMoved.addListener(renderBrowserTabs);
-  chrome.bookmarks.onCreated.addListener(renderBrowserTabs);
-  chrome.bookmarks.onRemoved.addListener(renderBrowserTabs);
-  chrome.bookmarks.onChanged.addListener(renderBrowserTabs);
+  // --- Event Listeners ---
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.type === 'TABS_UPDATED') {
+      requestRenderBrowserTabs();
+    }
+  });
 
+  searchBox.addEventListener('input', (e) => {
+    searchTerm = e.target.value;
+    requestRenderBrowserTabs();
+  });
 
-  // --- Original Logic ---
   allTabs.forEach(tab => {
     const item = document.createElement('a');
     item.textContent = tab.textContent;
@@ -190,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (target) target.classList.remove('hidden');
 
     if (targetId === 'tab-manager-container') {
-      renderBrowserTabs();
+      requestRenderBrowserTabs();
     }
 
     allTabs.forEach(t => {
