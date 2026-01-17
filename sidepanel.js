@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let showLinks = false;
   let renderTimeout;
   let searchTerm = '';
+  let draggedElement = null;
 
   const icons = {
     link: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6" /><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /><path d="M13 18l-.397 .534a5 5 0 0 1 -7.071 -7.072l.534 -.464" /></svg>',
@@ -135,11 +136,76 @@ document.addEventListener('DOMContentLoaded', () => {
   function createTabItem(tab, bookmarkMap, displayTitle) {
     const tabItem = document.createElement('div');
     tabItem.classList.add('browser-tab-item');
-    if (tab.active) {
-      tabItem.classList.add('is-active');
-    }
-    tabItem.title = displayTitle;
-    tabItem.addEventListener('click', () => {
+    tabItem.setAttribute('draggable', 'true');
+    tabItem.dataset.tabId = tab.id;
+
+    if (tab.active) tabItem.classList.add('is-active');
+    
+    // Drag and Drop Logic
+    tabItem.addEventListener('dragstart', (e) => {
+      draggedElement = e.currentTarget;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => draggedElement.classList.add('dragging'), 0);
+    });
+
+    tabItem.addEventListener('dragend', () => {
+      draggedElement.classList.remove('dragging');
+      draggedElement = null;
+    });
+
+    tabItem.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const target = e.currentTarget;
+      if (target === draggedElement) return;
+
+      const rect = target.getBoundingClientRect();
+      const isAfter = e.clientY > rect.top + rect.height / 2;
+      
+      document.querySelectorAll('.browser-tab-item').forEach(item => {
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      if (isAfter) {
+        target.classList.add('drag-over-bottom');
+      } else {
+        target.classList.add('drag-over-top');
+      }
+    });
+    
+    tabItem.addEventListener('dragleave', (e) => {
+      e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    tabItem.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const dropTarget = e.currentTarget;
+      dropTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+
+      if (draggedElement !== dropTarget) {
+        const draggedTabId = parseInt(draggedElement.dataset.tabId);
+        const targetTabId = parseInt(dropTarget.dataset.tabId);
+        
+        const rect = dropTarget.getBoundingClientRect();
+        const isAfter = e.clientY > rect.top + rect.height / 2;
+
+        chrome.tabs.get(targetTabId, (targetTabDetails) => {
+          const newIndex = isAfter ? targetTabDetails.index + 1 : targetTabDetails.index;
+          
+          // Optimistic UI Update
+          if (isAfter) {
+            dropTarget.after(draggedElement);
+          } else {
+            dropTarget.before(draggedElement);
+          }
+          
+          // Move the actual tab
+          chrome.tabs.move(draggedTabId, { index: newIndex });
+        });
+      }
+    });
+    
+    tabItem.addEventListener('click', (e) => {
+      if (e.target.closest('.action-btn')) return;
       chrome.tabs.update(tab.id, { active: true });
       chrome.windows.update(tab.windowId, { focused: true });
     });
@@ -149,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const clickablePart = document.createElement('div');
     clickablePart.classList.add('browser-tab-item-main-clickable');
+    clickablePart.title = displayTitle;
     
     const isBookmarked = bookmarkMap.has(tab.url);
     
