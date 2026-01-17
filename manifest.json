@@ -1,0 +1,35 @@
+{
+  "name": "AI Side Panel",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "description": "Opens ChatGPT and Gemini in Chrome's side panel",
+  "host_permissions": [
+    "*://*.openai.com/*",
+    "*://*.chatgpt.com/*",
+    "*://*.google.com/*",
+    "*://*.googleusercontent.com/*",
+    "https://www.googletagmanager.com/*",
+    "*://*.gstatic.com/*",
+    "*://accounts.google.com/*"
+  ],
+  "permissions": [
+    "declarativeNetRequest",
+    "sidePanel"
+  ],
+  "icons": {
+    "128": "images/icon.png",
+    "16": "images/icon.png"
+  },
+  "action": {
+    "default_title": "AI Side Panel"
+  },
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/;"
+  }
+}
