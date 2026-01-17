@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let draggedElement = null;
 
   const icons = {
+    merge: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M7 8l0 8" /><path d="M7 8a4 4 0 0 0 4 4h4" /></svg>',
     link: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6" /><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /><path d="M13 18l-.397 .534a5 5 0 0 1 -7.071 -7.072l.534 -.464" /></svg>',
     pin: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4" /><path d="M9 15l-4.5 4.5" /><path d="M14.5 4l5.5 5.5" /></svg>',
     star: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" /></svg>',
@@ -25,7 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
     close: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>'
   };
 
-  function setupTabManagerHeader() {
+  const tooltips = {
+    merge: 'Merge All Windows',
+    link: 'Show/Hide Links',
+    pin: 'Pin/Unpin Tab',
+    star: 'Bookmark/Un-bookmark Tab',
+    reload: 'Reload Tab',
+    close: 'Close Tab',
+    pinAll: 'Pin All Tabs',
+    unpinAll: 'Unpin All Tabs'
+  };
+
+  function setupTabManagerHeader(allTabsArePinned = false) {
     tabManagerHeader.innerHTML = '';
     
     const title = document.createElement('h3');
@@ -34,11 +46,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const actions = document.createElement('div');
     actions.classList.add('header-actions');
 
+    const mergeBtn = createActionButton('merge', false, async () => {
+      if (confirm('Are you sure you want to merge all tabs from other windows into this one?')) {
+        const currentWindow = await chrome.windows.getCurrent();
+        const tabs = await chrome.tabs.query({ windowId: -1, pinned: false });
+        const otherWindowTabs = tabs.filter(tab => tab.windowId !== currentWindow.id);
+        const tabIds = otherWindowTabs.map(t => t.id);
+        if (tabIds.length > 0) {
+          chrome.tabs.move(tabIds, { windowId: currentWindow.id, index: -1 });
+        }
+      }
+    });
+
     const showLinksBtn = createActionButton('link', showLinks, () => {
       showLinks = !showLinks;
       renderBrowserTabs();
     });
-    showLinksBtn.title = "Show/Hide Links";
+
+    const pinAllBtn = createActionButton('pin', allTabsArePinned, async () => {
+      const tabsToChange = await chrome.tabs.query({ pinned: allTabsArePinned });
+      for (const tab of tabsToChange) {
+        await chrome.tabs.update(tab.id, { pinned: !allTabsArePinned });
+      }
+      requestRenderBrowserTabs();
+    });
+    pinAllBtn.title = allTabsArePinned ? tooltips.unpinAll : tooltips.pinAll;
 
     const reloadAllBtn = createActionButton('reload', false, async () => {
       if (confirm('Are you sure you want to reload all tabs?')) {
@@ -46,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const tab of tabs) await chrome.tabs.reload(tab.id);
       }
     });
-    reloadAllBtn.title = "Reload All Tabs";
 
     const closeAllBtn = createActionButton('close', false, async () => {
       if (confirm('Are you sure you want to close all non-pinned tabs?')) {
@@ -55,9 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.remove(tabIds, renderBrowserTabs);
       }
     });
-    closeAllBtn.title = "Close All Non-Pinned Tabs";
 
-    actions.append(showLinksBtn, reloadAllBtn, closeAllBtn);
+    actions.append(mergeBtn, showLinksBtn, pinAllBtn, reloadAllBtn, closeAllBtn);
     tabManagerHeader.append(title, actions);
   }
 
@@ -89,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const windows = new Map();
     let pinnedCount = 0;
+    let unpinnedCount = 0;
     const lowerCaseFilter = filter.toLowerCase();
 
     for (const tab of browserTabs) {
@@ -103,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
           pinnedTabsList.appendChild(tabItem);
           pinnedCount++;
         } else {
+          unpinnedCount++;
           if (!windows.has(tab.windowId)) {
             windows.set(tab.windowId, []);
           }
@@ -111,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
+    setupTabManagerHeader(unpinnedCount === 0 && pinnedCount > 0);
     pinnedTabsSection.style.display = pinnedCount > 0 ? 'block' : 'none';
 
     let windowCounter = 1;
@@ -138,10 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabItem.classList.add('browser-tab-item');
     tabItem.setAttribute('draggable', 'true');
     tabItem.dataset.tabId = tab.id;
+    tabItem.dataset.windowId = tab.windowId;
 
     if (tab.active) tabItem.classList.add('is-active');
     
-    // Drag and Drop Logic
     tabItem.addEventListener('dragstart', (e) => {
       draggedElement = e.currentTarget;
       e.dataTransfer.effectAllowed = 'move';
@@ -181,24 +214,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const dropTarget = e.currentTarget;
       dropTarget.classList.remove('drag-over-top', 'drag-over-bottom');
 
-      if (draggedElement !== dropTarget) {
+      if (draggedElement && draggedElement !== dropTarget) {
         const draggedTabId = parseInt(draggedElement.dataset.tabId);
         const targetTabId = parseInt(dropTarget.dataset.tabId);
         
+        if (draggedElement.dataset.windowId !== dropTarget.dataset.windowId) {
+          return;
+        }
+
         const rect = dropTarget.getBoundingClientRect();
         const isAfter = e.clientY > rect.top + rect.height / 2;
 
         chrome.tabs.get(targetTabId, (targetTabDetails) => {
           const newIndex = isAfter ? targetTabDetails.index + 1 : targetTabDetails.index;
           
-          // Optimistic UI Update
           if (isAfter) {
             dropTarget.after(draggedElement);
           } else {
             dropTarget.before(draggedElement);
           }
           
-          // Move the actual tab
           chrome.tabs.move(draggedTabId, { index: newIndex });
         });
       }
@@ -262,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.classList.add('action-btn', iconName);
     if (isActive) btn.classList.add('active');
     btn.innerHTML = icons[iconName];
+    btn.title = tooltips[iconName] || '';
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();
