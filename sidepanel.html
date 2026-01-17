@@ -1,27 +1,7 @@
 <html>
   <head>
     <title>HTSP</title>
-    <style>
-      @font-face {
-        font-family: 'SN Pro';
-        src: url('fonts/SNPro.woff2') format('woff2');
-      }
-      body { margin: 0; padding: 0; font-family: "SN Pro", sans-serif; background-color: #202124; color: #e8eaed; display: flex; flex-direction: column; height: 100vh; }
-      #header { display: flex; justify-content: center; align-items: center; background-color: #3c4043; padding: 4px 8px; }
-      .tabs { display: flex; }
-      .tab { cursor: pointer; padding: 4px 8px; border: 1px solid #5f6368; border-radius: 4px; margin-right: 8px; font-size: 12px; font-family: "SN Pro", sans-serif; }
-      .tab.active { background-color: #8ab4f8; color: #202124; }
-      .iframe-container { position: relative; flex-grow: 1; }
-      .ai-frame { width: 100%; height: 100%; border: 0; position: absolute; top: 0; left: 0; }
-      #it-tools-frame {
-        transform: scale(0.8);
-        transform-origin: 0 0;
-        width: 125%;
-        height: 125%;
-      }
-      .hidden { display: none; }
-      #footer { background-color: #4a4e52; padding: 8px; text-align: center; font-size: 12px; color: #e8eaed; font-family: "SN Pro", sans-serif; }
-    </style>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <div id="header">
@@ -31,13 +11,25 @@
         <div class="tab" data-target="translate-frame">Translate</div>
         <div class="tab" data-target="it-tools-frame">IT Tools</div>
       </div>
+      <div class="dropdown">
+        <button id="dropdown-btn" class="dropdown-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+          </svg>
+        </button>
+        <div id="dropdown-content" class="dropdown-content">
+          <!-- Dropdown items will be populated by JS -->
+        </div>
+      </div>
     </div>
+
     <div class="iframe-container">
       <iframe id="chatgpt-frame" class="ai-frame" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
       <iframe id="translate-frame" class="ai-frame hidden" src="https://chatgpt.com/translate/" allow="clipboard-write; microphone"></iframe>
       <iframe id="it-tools-frame" class="ai-frame hidden" src="https://it-tools.tech/" allow="clipboard-write; microphone"></iframe>
     </div>
+
     <div id="footer">
       <span>&copy;<span id="year"></span> - Developed by ivth</span>
     </div>
