@@ -1,24 +1,24 @@
 # HTSP (Help Tools Side Panel)
 
-**HTSP** là một tiện ích mở rộng cho Chrome, tích hợp các công cụ web và một trình quản lý tab mạnh mẽ vào Side Panel của trình duyệt.
+**HTSP** is a Chrome extension that integrates web tools and a powerful tab manager into the browser's Side Panel.
 
-## ✨ Tính năng
+## ✨ Features
 
-### 1. Các Tab Tích hợp
-- Truy cập nhanh `ChatGPT`, `Gemini`, `Translate`, và `IT-Tools` trong các tab riêng biệt.
-- Nội dung được tự động thu nhỏ để vừa với không gian của Side Panel.
+### 1. Integrated Web Panels
+- Quick access to `ChatGPT`, `Gemini`, `Translate`, and `IT-Tools` in separate tabs.
+- Content is automatically scaled to fit the Side Panel's compact view.
 
-### 2. Trình Quản lý Tab
-Một trình quản lý đầy đủ tính năng, được cập nhật theo thời gian thực để điều khiển tất cả các tab đang mở.
-- **Tổ chức:** Tự động nhóm tab theo cửa sổ, ưu tiên tab đã ghim, và hiển thị tên bookmark.
-- **Tương tác:** Tìm kiếm real-time và kéo-thả để sắp xếp lại thứ tự.
-- **Hành động:**
-  - **Đơn lẻ:** Pin, Bookmark, Reload, và Close.
-  - **Hàng loạt:** Hợp nhất cửa sổ, Pin/Unpin tất cả, Reload tất cả, và Đóng các tab chưa ghim.
-- **Tiện ích:** Tùy chọn hiển thị/ẩn URL đầy đủ.
+### 2. Tab Manager
+A full-featured, real-time manager for all open browser tabs.
+- **Organization:** Automatically groups tabs by window, prioritizes pinned tabs, and displays bookmark names.
+- **Interaction:** Real-time search and drag-and-drop reordering.
+- **Actions:**
+  - **Single Tab:** Pin, Bookmark, Reload, and Close.
+  - **Bulk:** Merge windows, Pin/Unpin all, Reload all, and Close all non-pinned tabs.
+- **Utility:** Toggle visibility of full tab URLs.
 
-## Cài đặt
-1.  Clone repository này về máy.
-2.  Mở Chrome, truy cập `chrome://extensions`.
-3.  Bật **Developer mode**.
-4.  Nhấp vào **Load unpacked** và chọn thư mục mã nguồn.
+## Installation
+1.  Clone this repository to your local machine.
+2.  Open Chrome and navigate to `chrome://extensions`.
+3.  Enable **Developer mode**.
+4.  Click **Load unpacked** and select the source code directory.
