@@ -135,18 +135,23 @@ document.addEventListener('DOMContentLoaded', () => {
   function createTabItem(tab, bookmarkMap, displayTitle) {
     const tabItem = document.createElement('div');
     tabItem.classList.add('browser-tab-item');
+    if (tab.active) {
+      tabItem.classList.add('is-active');
+    }
+    tabItem.title = displayTitle;
+    tabItem.addEventListener('click', () => {
+      chrome.tabs.update(tab.id, { active: true });
+      chrome.windows.update(tab.windowId, { focused: true });
+    });
     
     const mainPart = document.createElement('div');
     mainPart.classList.add('browser-tab-item-main');
     
     const clickablePart = document.createElement('div');
     clickablePart.classList.add('browser-tab-item-main-clickable');
-    clickablePart.title = displayTitle;
-    clickablePart.addEventListener('click', () => {
-      chrome.tabs.update(tab.id, { active: true });
-      chrome.windows.update(tab.windowId, { focused: true });
-    });
-
+    
+    const isBookmarked = bookmarkMap.has(tab.url);
+    
     const favicon = document.createElement('img');
     favicon.src = tab.favIconUrl || 'images/icon.png';
     clickablePart.appendChild(favicon);
@@ -161,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pinBtn = createActionButton('pin', tab.pinned, () => {
       chrome.tabs.update(tab.id, { pinned: !tab.pinned }, requestRenderBrowserTabs);
     });
-    const isBookmarked = bookmarkMap.has(tab.url);
     const bookmarkBtn = createActionButton('star', isBookmarked, async () => {
       if (isBookmarked) {
         const bookmarks = await chrome.bookmarks.search({url: tab.url});
@@ -171,16 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       requestRenderBrowserTabs();
     });
-    const reloadBtn = createActionButton('reload', false, () => {
-      if (confirm(`Are you sure you want to reload "${displayTitle}"?`)) {
-        chrome.tabs.reload(tab.id);
-      }
-    });
-    const closeBtn = createActionButton('close', false, () => {
-      if (confirm(`Are you sure you want to close "${displayTitle}"?`)) {
-        chrome.tabs.remove(tab.id, () => tabItem.remove());
-      }
-    });
+    const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
+    const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id, () => tabItem.remove()));
 
     actions.append(pinBtn, bookmarkBtn, reloadBtn, closeBtn);
     mainPart.append(clickablePart, actions);
