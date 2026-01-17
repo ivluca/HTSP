@@ -81,6 +81,7 @@ chrome.tabs.onUpdated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPD
 chrome.tabs.onMoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
 chrome.tabs.onAttached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
 chrome.tabs.onDetached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onActivated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
 
 chrome.windows.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
 chrome.windows.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
