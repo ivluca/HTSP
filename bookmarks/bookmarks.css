@@ -1,4 +1,4 @@
-#bookmarks-container { padding: 8px; }
+#bookmarks-container { padding: 8px; overflow-y: scroll; }
 .bookmark-item-container { display: flex; align-items: center; justify-content: space-between; border-radius: 4px; transition: background-color 0.2s ease; }
 .bookmark-item-container:hover { background-color: var(--item-hover-bg); }
 .bookmark-item { display: flex; align-items: center; padding: 6px; text-decoration: none; color: var(--text-color); flex-grow: 1; min-width: 0; }
