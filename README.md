@@ -17,6 +17,15 @@ A full-featured, real-time manager for all open browser tabs.
   - **Bulk:** Merge windows, Pin/Unpin all, Reload all, and Close all non-pinned tabs.
 - **Utility:** Toggle visibility of full tab URLs.
 
+### 3. Bookmark Manager
+A streamlined interface for managing your bookmarks directly in the Side Panel.
+- **Organization:** View bookmarks in a nested folder structure that remembers which folders are open.
+- **Actions:**
+  - **Remove Bookmarks:** A remove icon appears on hover, allowing you to quickly delete bookmarks.
+- **UI/UX:**
+  - Long bookmark names are truncated with an ellipsis (...) to keep the layout clean.
+  - The layout remains stable, with no shifting when opening or closing folders.
+
 ## Installation
 1.  Clone this repository to your local machine.
 2.  Open Chrome and navigate to `chrome://extensions`.
