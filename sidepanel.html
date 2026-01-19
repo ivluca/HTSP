@@ -7,6 +7,7 @@
     <div id="header">
       <div class="tabs">
         <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
+        <div class="tab" data-target="bookmarks-container">Bookmarks</div>
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
         <div class="tab" data-target="it-tools-frame">IT Tools</div>
@@ -27,8 +28,9 @@
     <div class="iframe-container">
       <div id="tab-manager-container" class="ai-frame" style="overflow-y: auto;">
         <div id="tab-manager-header"></div>
-        <label for="search-box" class="visually-hidden">Search tabs</label>
-        <input type="text" id="search-box" placeholder="Search tabs...">        <div id="pinned-tabs-section">
+        <label for="search-box"></label>
+        <input type="text" id="search-box" placeholder="Search tabs...">
+        <div id="pinned-tabs-section">
           <h3 class="section-title">Pinned Tabs</h3>
           <div id="pinned-tabs-list"></div>
         </div>
@@ -36,6 +38,7 @@
           <!-- Window groups will be rendered here by JS -->
         </div>
       </div>
+      <div id="bookmarks-container" class="ai-frame hidden" style="overflow-y: auto;"></div>
       <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
       <iframe id="it-tools-frame" class="ai-frame hidden" src="https://it-tools.tech/" allow="clipboard-write; microphone"></iframe>
