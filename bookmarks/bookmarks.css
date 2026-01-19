@@ -10,6 +10,7 @@
 .folder-icon { margin-right: 8px; display: flex; align-items: center; flex-shrink: 0; }
 .folder-icon svg { width: 16px; height: 16px; stroke: var(--icon-stroke); }
 .bookmark-folder-children { margin-left: 10px; }
-.remove-bookmark-button { background: none; border: none; cursor: pointer; padding: 4px; margin-right: 6px; display: flex; align-items: center; justify-content: center; border-radius: 4px; flex-shrink: 0; }
+.remove-bookmark-button { visibility: hidden; background: none; border: none; cursor: pointer; padding: 4px; margin-right: 6px; display: flex; align-items: center; justify-content: center; border-radius: 4px; flex-shrink: 0; }
+.bookmark-item-container:hover .remove-bookmark-button { visibility: visible; }
 .remove-bookmark-button:hover { background-color: var(--item-hover-bg); }
 .remove-bookmark-button svg { width: 16px; height: 16px; stroke: var(--icon-stroke); }
