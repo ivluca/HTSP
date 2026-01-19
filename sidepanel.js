@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let showLinks = false;
   let renderTimeout;
   let searchTerm = '';
-  let draggedElement = null;
 
   const icons = {
     merge: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M7 8l0 8" /><path d="M7 8a4 4 0 0 0 4 4h4" /></svg>',
@@ -36,6 +35,18 @@ document.addEventListener('DOMContentLoaded', () => {
     pinAll: 'Pin All Tabs',
     unpinAll: 'Unpin All Tabs'
   };
+
+  function applyTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+  }
+
+  function checkColorScheme() {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      applyTheme('dark');
+    } else {
+      applyTheme('light');
+    }
+  }
 
   function setupTabManagerHeader(allTabsArePinned = false) {
     tabManagerHeader.innerHTML = '';
@@ -177,75 +188,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function createTabItem(tab, bookmarkMap, displayTitle) {
     const tabItem = document.createElement('div');
     tabItem.classList.add('browser-tab-item');
-    tabItem.setAttribute('draggable', 'true');
     tabItem.dataset.tabId = tab.id;
     tabItem.dataset.windowId = tab.windowId;
 
     if (tab.active) tabItem.classList.add('is-active');
-    
-    tabItem.addEventListener('dragstart', (e) => {
-      draggedElement = e.currentTarget;
-      e.dataTransfer.effectAllowed = 'move';
-      setTimeout(() => draggedElement.classList.add('dragging'), 0);
-    });
-
-    tabItem.addEventListener('dragend', () => {
-      draggedElement.classList.remove('dragging');
-      draggedElement = null;
-    });
-
-    tabItem.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const target = e.currentTarget;
-      if (target === draggedElement) return;
-
-      const rect = target.getBoundingClientRect();
-      const isAfter = e.clientY > rect.top + rect.height / 2;
-      
-      document.querySelectorAll('.browser-tab-item').forEach(item => {
-        item.classList.remove('drag-over-top', 'drag-over-bottom');
-      });
-
-      if (isAfter) {
-        target.classList.add('drag-over-bottom');
-      } else {
-        target.classList.add('drag-over-top');
-      }
-    });
-    
-    tabItem.addEventListener('dragleave', (e) => {
-      e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
-    });
-
-    tabItem.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const dropTarget = e.currentTarget;
-      dropTarget.classList.remove('drag-over-top', 'drag-over-bottom');
-
-      if (draggedElement && draggedElement !== dropTarget) {
-        const draggedTabId = parseInt(draggedElement.dataset.tabId);
-        const targetTabId = parseInt(dropTarget.dataset.tabId);
-        
-        if (draggedElement.dataset.windowId !== dropTarget.dataset.windowId) {
-          return;
-        }
-
-        const rect = dropTarget.getBoundingClientRect();
-        const isAfter = e.clientY > rect.top + rect.height / 2;
-
-        chrome.tabs.get(targetTabId, (targetTabDetails) => {
-          const newIndex = isAfter ? targetTabDetails.index + 1 : targetTabDetails.index;
-          
-          if (isAfter) {
-            dropTarget.after(draggedElement);
-          } else {
-            dropTarget.before(draggedElement);
-          }
-          
-          chrome.tabs.move(draggedTabId, { index: newIndex });
-        });
-      }
-    });
     
     tabItem.addEventListener('click', (e) => {
       if (e.target.closest('.action-btn')) return;
@@ -398,7 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tabsContainer.scrollLeft = scrollLeft - walk;
   });
 
-  document.getElementById('year').textContent = new Date().getFullYear();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkColorScheme);
+  checkColorScheme();
+
   setupTabManagerHeader();
   switchTab('tab-manager-container');
 });
