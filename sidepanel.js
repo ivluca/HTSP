@@ -343,6 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const walk = (x - startX) * 2;
     tabsContainer.scrollLeft = scrollLeft - walk;
   });
+  tabsContainer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    tabsContainer.scrollLeft += e.deltaY;
+  });
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkColorScheme);
   checkColorScheme();
