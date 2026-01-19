@@ -75,19 +75,23 @@ function sendMessageToSidePanel(message) {
 }
 
 // Comprehensive listeners
-chrome.tabs.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onUpdated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onMoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onAttached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onDetached.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.tabs.onActivated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.tabs.onCreated.addListener((tab) => sendMessageToSidePanel({ type: 'TAB_CREATED', tabId: tab.id }));
+chrome.tabs.onRemoved.addListener((tabId) => sendMessageToSidePanel({ type: 'TAB_REMOVED', tabId }));
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' || changeInfo.title || changeInfo.pinned || changeInfo.url) {
+    sendMessageToSidePanel({ type: 'TAB_UPDATED', tabId, changeInfo });
+  }
+});
+chrome.tabs.onMoved.addListener((tabId, moveInfo) => sendMessageToSidePanel({ type: 'TAB_MOVED', tabId, moveInfo }));
+chrome.tabs.onAttached.addListener((tabId, attachInfo) => sendMessageToSidePanel({ type: 'TAB_ATTACHED', tabId, attachInfo }));
+chrome.tabs.onDetached.addListener((tabId, detachInfo) => sendMessageToSidePanel({ type: 'TAB_DETACHED', tabId, detachInfo }));
+chrome.tabs.onActivated.addListener((activeInfo) => sendMessageToSidePanel({ type: 'TAB_ACTIVATED', activeInfo }));
 
-chrome.windows.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.windows.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.windows.onCreated.addListener((window) => sendMessageToSidePanel({ type: 'WINDOW_CREATED', windowId: window.id }));
+chrome.windows.onRemoved.addListener((windowId) => sendMessageToSidePanel({ type: 'WINDOW_REMOVED', windowId }));
 
-chrome.bookmarks.onCreated.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.bookmarks.onRemoved.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
-chrome.bookmarks.onChanged.addListener(() => sendMessageToSidePanel({ type: 'TABS_UPDATED' }));
+chrome.bookmarks.onCreated.addListener((id, bookmark) => sendMessageToSidePanel({ type: 'BOOKMARK_CREATED', id, bookmark }));
+chrome.bookmarks.onRemoved.addListener((id, removeInfo) => sendMessageToSidePanel({ type: 'BOOKMARK_REMOVED', id, removeInfo }));
+chrome.bookmarks.onChanged.addListener((id, changeInfo) => sendMessageToSidePanel({ type: 'BOOKMARK_CHANGED', id, changeInfo }));
 
 initiate();
