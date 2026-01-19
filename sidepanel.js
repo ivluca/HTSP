@@ -98,16 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function renderBrowserTabs(filter = '') {
     if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
-
-    pinnedTabsList.innerHTML = '';
-    windowGroupsContainer.innerHTML = '';
-
+  
     const [browserTabs, allBookmarks, currentWindow] = await Promise.all([
       chrome.tabs.query({}),
       chrome.bookmarks.getTree(),
       chrome.windows.getCurrent()
     ]);
-
+  
     const bookmarkMap = new Map();
     function extractBookmarkData(nodes) {
       for (const node of nodes) {
@@ -116,22 +113,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     extractBookmarkData(allBookmarks);
-
+  
     const windows = new Map();
+    const pinnedTabsFragment = document.createDocumentFragment();
     let pinnedCount = 0;
     let unpinnedCount = 0;
     const lowerCaseFilter = filter.toLowerCase();
-
+  
     for (const tab of browserTabs) {
       const displayTitle = bookmarkMap.get(tab.url) || tab.title;
       const matchesFilter = filter === '' || 
                             displayTitle.toLowerCase().includes(lowerCaseFilter) || 
                             (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
-
+  
       if (matchesFilter) {
         const tabItem = createTabItem(tab, bookmarkMap, displayTitle);
         if (tab.pinned) {
-          pinnedTabsList.appendChild(tabItem);
+          pinnedTabsFragment.appendChild(tabItem);
           pinnedCount++;
         } else {
           unpinnedCount++;
@@ -145,9 +143,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupTabManagerHeader(unpinnedCount === 0 && pinnedCount > 0);
     pinnedTabsSection.style.display = pinnedCount > 0 ? 'block' : 'none';
-
+  
+    const windowGroupsFragment = document.createDocumentFragment();
+    const sortedWindows = [...windows.entries()].sort((a, b) => {
+      if (a[0] === currentWindow.id) return -1;
+      if (b[0] === currentWindow.id) return 1;
+      return a[0] - b[0];
+    });
+  
     let windowCounter = 1;
-    for (const [windowId, tabItems] of windows) {
+    for (const [windowId, tabItems] of sortedWindows) {
       const group = document.createElement('div');
       const title = document.createElement('h3');
       title.classList.add('section-title');
@@ -158,11 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
       
       group.appendChild(title);
       tabItems.forEach(tabItem => group.appendChild(tabItem));
-      windowGroupsContainer.appendChild(group);
+      windowGroupsFragment.appendChild(group);
       
       if (!isCurrentWindow) windowCounter++;
     }
-
+  
+    pinnedTabsList.replaceChildren(pinnedTabsFragment);
+    windowGroupsContainer.replaceChildren(windowGroupsFragment);
+  
     document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   }
 
@@ -278,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       requestRenderBrowserTabs();
     });
     const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
-    const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id, () => tabItem.remove()));
+    const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id));
 
     actions.append(pinBtn, bookmarkBtn, reloadBtn, closeBtn);
     mainPart.append(clickablePart, actions);
@@ -307,8 +315,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Event Listeners ---
   chrome.runtime.onMessage.addListener((request) => {
-    if (request.type === 'TABS_UPDATED') {
-      requestRenderBrowserTabs();
+    switch (request.type) {
+      case 'TAB_CREATED':
+      case 'TAB_REMOVED':
+      case 'TAB_UPDATED':
+      case 'TAB_MOVED':
+      case 'TAB_ATTACHED':
+      case 'TAB_DETACHED':
+      case 'TAB_ACTIVATED':
+      case 'WINDOW_CREATED':
+      case 'WINDOW_REMOVED':
+      case 'BOOKMARK_CREATED':
+      case 'BOOKMARK_REMOVED':
+      case 'BOOKMARK_CHANGED':
+        requestRenderBrowserTabs();
+        break;
     }
   });
 
