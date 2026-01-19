@@ -1,14 +1,19 @@
+const folderState = new Map();
+
 async function renderBookmarks() {
   const bookmarksContainer = document.getElementById('bookmarks-container');
   const bookmarks = await chrome.bookmarks.getTree();
   bookmarksContainer.innerHTML = '';
   const fragment = document.createDocumentFragment();
-  bookmarks[0].children.forEach(bookmark => renderBookmarkNode(bookmark, fragment, 0));
+  if (bookmarks[0] && bookmarks[0].children) {
+    bookmarks[0].children.forEach(bookmark => renderBookmarkNode(bookmark, fragment, 0, ''));
+  }
   bookmarksContainer.appendChild(fragment);
 }
 
-function renderBookmarkNode(node, parentElement, depth) {
+function renderBookmarkNode(node, parentElement, depth, path) {
   if (node.children && node.children.length > 0) {
+    const currentPath = path ? `${path}/${node.id}` : node.id;
     const folder = document.createElement('div');
     folder.classList.add('bookmark-folder');
     folder.style.paddingLeft = `${depth * 10}px`;
@@ -18,7 +23,6 @@ function renderBookmarkNode(node, parentElement, depth) {
     
     const icon = document.createElement('span');
     icon.classList.add('folder-icon');
-    icon.innerHTML = icons.folder;
     folderHeader.appendChild(icon);
 
     const title = document.createElement('span');
@@ -27,14 +31,18 @@ function renderBookmarkNode(node, parentElement, depth) {
     
     const childrenContainer = document.createElement('div');
     childrenContainer.classList.add('bookmark-folder-children');
-    childrenContainer.style.display = 'none';
     
-    node.children.forEach(child => renderBookmarkNode(child, childrenContainer, depth + 1));
+    const isExpanded = folderState.get(currentPath) === true;
+    childrenContainer.style.display = isExpanded ? 'block' : 'none';
+    icon.innerHTML = isExpanded ? icons.folderOpen : icons.folder;
+    
+    node.children.forEach(child => renderBookmarkNode(child, childrenContainer, depth + 1, currentPath));
     
     folderHeader.addEventListener('click', () => {
-      const isExpanded = childrenContainer.style.display === 'block';
-      childrenContainer.style.display = isExpanded ? 'none' : 'block';
-      icon.innerHTML = isExpanded ? icons.folder : icons.folderOpen;
+      const wasExpanded = folderState.get(currentPath) === true;
+      folderState.set(currentPath, !wasExpanded);
+      childrenContainer.style.display = !wasExpanded ? 'block' : 'none';
+      icon.innerHTML = !wasExpanded ? icons.folderOpen : icons.folder;
     });
 
     folder.append(folderHeader, childrenContainer);
