@@ -1,3 +1,5 @@
+const hiddenTabs = new Set();
+
 function setupTabManagerHeader(allTabsArePinned = false) {
   const tabManagerHeader = document.getElementById('tab-manager-header');
   tabManagerHeader.innerHTML = '';
@@ -168,6 +170,9 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
 
   const title = document.createElement('span');
   title.textContent = displayTitle;
+  if (hiddenTabs.has(tab.id)) {
+    title.classList.add('blurred');
+  }
   clickablePart.appendChild(title);
   
   const actions = document.createElement('div');
@@ -185,10 +190,18 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
     }
     requestRenderBrowserTabs();
   });
+  const eyeBtn = createActionButton('eye', hiddenTabs.has(tab.id), () => {
+    if (hiddenTabs.has(tab.id)) {
+      hiddenTabs.delete(tab.id);
+    } else {
+      hiddenTabs.add(tab.id);
+    }
+    requestRenderBrowserTabs();
+  });
   const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
   const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id));
 
-  actions.append(pinBtn, bookmarkBtn, reloadBtn, closeBtn);
+  actions.append(pinBtn, bookmarkBtn, eyeBtn, reloadBtn, closeBtn);
   mainPart.append(clickablePart, actions);
 
   const urlPart = document.createElement('div');
