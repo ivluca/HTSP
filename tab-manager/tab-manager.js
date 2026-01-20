@@ -48,7 +48,7 @@ function setupTabManagerHeader(allTabsArePinned = false) {
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
 
-    if (tabsToDelete.length > 0 && confirm(`Are you sure you want to close ${tabsToDelete.length} selected tabs?`)) {
+    if (tabsToDelete.length > 0) {
       await chrome.tabs.remove(tabsToDelete);
       selectedTabs.clear();
       requestRenderBrowserTabs();
