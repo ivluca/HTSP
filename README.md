@@ -5,7 +5,7 @@
 ## ✨ Features
 
 ### 1. Integrated Web Panels
-- Quick access to `ChatGPT`, `Gemini`, `Translate`, and `IT-Tools` in separate tabs.
+- Quick access to `ChatGPT`, `Gemini`, `Claude`, `Translate`, and `IT-Tools` in separate tabs.
 - Content is automatically scaled to fit the Side Panel's compact view.
 
 ### 2. Tab Manager

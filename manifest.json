@@ -12,7 +12,8 @@
     "*://*.gstatic.com/*",
     "*://accounts.google.com/*",
     "https://it-tools.tech/*",
-    "https://www.schemecolor.com/*"
+    "https://www.schemecolor.com/*",
+    "*://claude.ai/*"
   ],
   "permissions": [
     "declarativeNetRequest",
@@ -34,6 +35,6 @@
     "default_path": "sidepanel.html"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://it-tools.tech/ https://www.schemecolor.com/;"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/ https://it-tools.tech/ https://www.schemecolor.com/ https://claude.ai/;"
   }
 }
