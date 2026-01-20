@@ -1,4 +1,5 @@
 const hiddenTabs = new Set();
+const selectedTabs = new Set();
 
 function setupTabManagerHeader(allTabsArePinned = false) {
   const tabManagerHeader = document.getElementById('tab-manager-header');
@@ -43,15 +44,19 @@ function setupTabManagerHeader(allTabsArePinned = false) {
     }
   });
 
-  const closeAllBtn = createActionButton('close', false, async () => {
-    if (confirm('Are you sure you want to close all non-pinned tabs?')) {
-      const tabs = await chrome.tabs.query({ pinned: false });
-      const tabIds = tabs.map(t => t.id);
-      chrome.tabs.remove(tabIds, renderBrowserTabs);
+  const closeSelectedBtn = createActionButton('close', false, async () => {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
+
+    if (tabsToDelete.length > 0 && confirm(`Are you sure you want to close ${tabsToDelete.length} selected tabs?`)) {
+      await chrome.tabs.remove(tabsToDelete);
+      selectedTabs.clear();
+      requestRenderBrowserTabs();
     }
   });
+  closeSelectedBtn.disabled = selectedTabs.size === 0;
 
-  actions.append(mergeBtn, showLinksBtn, pinAllBtn, reloadAllBtn, closeAllBtn);
+  actions.append(mergeBtn, showLinksBtn, pinAllBtn, reloadAllBtn, closeSelectedBtn);
   tabManagerHeader.append(title, actions);
 }
 
@@ -139,6 +144,10 @@ async function renderBrowserTabs(filter = '') {
   windowGroupsContainer.replaceChildren(windowGroupsFragment);
 
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
+  const closeSelectedBtn = document.querySelector('.action-btn.close');
+  if (closeSelectedBtn) {
+    closeSelectedBtn.disabled = selectedTabs.size === 0;
+  }
 }
 
 function createTabItem(tab, bookmarkUrls, displayTitle) {
@@ -148,11 +157,22 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
   tabItem.dataset.windowId = tab.windowId;
 
   if (tab.active) tabItem.classList.add('is-active');
+  if (selectedTabs.has(tab.id)) tabItem.classList.add('is-selected');
   
   tabItem.addEventListener('click', (e) => {
-    if (e.target.closest('.action-btn')) return;
-    chrome.tabs.update(tab.id, { active: true });
-    chrome.windows.update(tab.windowId, { focused: true });
+    if (e.ctrlKey || e.metaKey) {
+      if (selectedTabs.has(tab.id)) {
+        selectedTabs.delete(tab.id);
+      } else {
+        selectedTabs.add(tab.id);
+      }
+      renderBrowserTabs();
+    } else {
+      if (e.target.closest('.action-btn')) return;
+      selectedTabs.clear();
+      chrome.tabs.update(tab.id, { active: true });
+      chrome.windows.update(tab.windowId, { focused: true });
+    }
   });
   
   const mainPart = document.createElement('div');
@@ -199,7 +219,10 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
     requestRenderBrowserTabs();
   });
   const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
-  const closeBtn = createActionButton('close', false, () => chrome.tabs.remove(tab.id));
+  const closeBtn = createActionButton('close', false, () => {
+    chrome.tabs.remove(tab.id);
+    selectedTabs.delete(tab.id);
+  });
 
   actions.append(pinBtn, bookmarkBtn, eyeBtn, reloadBtn, closeBtn);
   mainPart.append(clickablePart, actions);

@@ -9,7 +9,9 @@
   border-radius: 4px; position: relative; cursor: pointer; transition: background-color 0.2s ease; border-top: 2px solid transparent; border-bottom: 2px solid transparent; margin-top: -2px; margin-bottom: 0; }
 .browser-tab-item:hover { background-color: var(--item-hover-bg); }
 .browser-tab-item.is-active { background-color: var(--active-item-bg); }
+.browser-tab-item.is-selected { background-color: var(--active-item-bg); }
 .browser-tab-item.is-active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background-color: var(--active-item-border); border-radius: 4px 0 0 4px; }
+.browser-tab-item.is-selected::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background-color: var(--active-item-border); border-radius: 0 4px 4px 0; }
 .browser-tab-item.dragging { opacity: 0.4; background-color: var(--item-hover-bg); }
 .browser-tab-item.drag-over-top { border-top-color: var(--focus-border); }
 .browser-tab-item.drag-over-bottom { border-bottom-color: var(--focus-border); }
@@ -26,5 +28,6 @@
 .action-btn.active.pin svg { stroke: #1677ff; fill: #1677ff; }
 .action-btn.active.link svg { stroke: #1677ff; }
 .action-btn.close svg { stroke: #FF0000; }
+.action-btn.close:disabled svg { stroke: var(--icon-stroke); }
 .tab-url { font-size: 10px; color: var(--url-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; display: none; }
 .tab-url.visible { display: block; }
