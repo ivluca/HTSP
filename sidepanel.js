@@ -146,6 +146,7 @@ tabsContainer.addEventListener('mousemove', (e) => {
   tabsContainer.scrollLeft = scrollLeft - walk;
 });
 tabsContainer.addEventListener('wheel', (e) => {
+  if (e.deltaY === 0) return;
   e.preventDefault();
   tabsContainer.scrollLeft += e.deltaY;
 });

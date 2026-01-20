@@ -67,14 +67,14 @@ async function renderBrowserTabs(filter = '') {
     chrome.windows.getCurrent()
   ]);
 
-  const bookmarkMap = new Map();
-  function extractBookmarkData(nodes) {
+  const bookmarkUrls = new Set();
+  function extractBookmarkUrls(nodes) {
     for (const node of nodes) {
-      if (node.url) bookmarkMap.set(node.url, node.title);
-      if (node.children) extractBookmarkData(node.children);
+      if (node.url) bookmarkUrls.add(node.url);
+      if (node.children) extractBookmarkUrls(node.children);
     }
   }
-  extractBookmarkData(allBookmarks);
+  extractBookmarkUrls(allBookmarks);
 
   const windows = new Map();
   const pinnedTabsFragment = document.createDocumentFragment();
@@ -83,13 +83,13 @@ async function renderBrowserTabs(filter = '') {
   const lowerCaseFilter = filter.toLowerCase();
 
   for (const tab of browserTabs) {
-    const displayTitle = bookmarkMap.get(tab.url) || tab.title;
+    const displayTitle = tab.title;
     const matchesFilter = filter === '' || 
                           displayTitle.toLowerCase().includes(lowerCaseFilter) || 
                           (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
 
     if (matchesFilter) {
-      const tabItem = createTabItem(tab, bookmarkMap, displayTitle);
+      const tabItem = createTabItem(tab, bookmarkUrls, displayTitle);
       if (tab.pinned) {
         pinnedTabsFragment.appendChild(tabItem);
         pinnedCount++;
@@ -139,7 +139,7 @@ async function renderBrowserTabs(filter = '') {
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
 }
 
-function createTabItem(tab, bookmarkMap, displayTitle) {
+function createTabItem(tab, bookmarkUrls, displayTitle) {
   const tabItem = document.createElement('div');
   tabItem.classList.add('browser-tab-item');
   tabItem.dataset.tabId = tab.id;
@@ -160,7 +160,7 @@ function createTabItem(tab, bookmarkMap, displayTitle) {
   clickablePart.classList.add('browser-tab-item-main-clickable');
   clickablePart.title = displayTitle;
   
-  const isBookmarked = bookmarkMap.has(tab.url);
+  const isBookmarked = bookmarkUrls.has(tab.url);
   
   const favicon = document.createElement('img');
   favicon.src = tab.favIconUrl || 'images/icon.png';
