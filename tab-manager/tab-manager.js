@@ -12,14 +12,12 @@ function setupTabManagerHeader(allTabsArePinned = false) {
   actions.classList.add('header-actions');
 
   const mergeBtn = createActionButton('merge', false, async () => {
-    if (confirm('Are you sure you want to merge all tabs from other windows into this one?')) {
-      const currentWindow = await chrome.windows.getCurrent();
-      const tabs = await chrome.tabs.query({ windowId: -1, pinned: false });
-      const otherWindowTabs = tabs.filter(tab => tab.windowId !== currentWindow.id);
-      const tabIds = otherWindowTabs.map(t => t.id);
-      if (tabIds.length > 0) {
-        chrome.tabs.move(tabIds, { windowId: currentWindow.id, index: -1 });
-      }
+    const currentWindow = await chrome.windows.getCurrent();
+    const tabs = await chrome.tabs.query({ windowId: -1, pinned: false });
+    const otherWindowTabs = tabs.filter(tab => tab.windowId !== currentWindow.id);
+    const tabIds = otherWindowTabs.map(t => t.id);
+    if (tabIds.length > 0) {
+      chrome.tabs.move(tabIds, { windowId: currentWindow.id, index: -1 });
     }
   });
 
@@ -28,21 +26,21 @@ function setupTabManagerHeader(allTabsArePinned = false) {
     renderBrowserTabs();
   });
 
-  const pinAllBtn = createActionButton('pin', allTabsArePinned, async () => {
-    const tabsToChange = await chrome.tabs.query({ pinned: allTabsArePinned });
-    for (const tab of tabsToChange) {
-      await chrome.tabs.update(tab.id, { pinned: !allTabsArePinned });
+  const pinSelectedBtn = createActionButton('pin', false, async () => {
+    for (const tabId of selectedTabs) {
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { pinned: !tab.pinned });
     }
     requestRenderBrowserTabs();
   });
-  pinAllBtn.title = allTabsArePinned ? tooltips.unpinAll : tooltips.pinAll;
+  pinSelectedBtn.disabled = selectedTabs.size === 0;
 
-  const reloadAllBtn = createActionButton('reload', false, async () => {
-    if (confirm('Are you sure you want to reload all tabs?')) {
-      const tabs = await chrome.tabs.query({});
-      for (const tab of tabs) await chrome.tabs.reload(tab.id);
+  const reloadSelectedBtn = createActionButton('reload', false, async () => {
+    for (const tabId of selectedTabs) {
+      await chrome.tabs.reload(tabId);
     }
   });
+  reloadSelectedBtn.disabled = selectedTabs.size === 0;
 
   const closeSelectedBtn = createActionButton('close', false, async () => {
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -56,7 +54,7 @@ function setupTabManagerHeader(allTabsArePinned = false) {
   });
   closeSelectedBtn.disabled = selectedTabs.size === 0;
 
-  actions.append(mergeBtn, showLinksBtn, pinAllBtn, reloadAllBtn, closeSelectedBtn);
+  actions.append(mergeBtn, showLinksBtn, pinSelectedBtn, reloadSelectedBtn, closeSelectedBtn);
   tabManagerHeader.append(title, actions);
 }
 
@@ -144,10 +142,15 @@ async function renderBrowserTabs(filter = '') {
   windowGroupsContainer.replaceChildren(windowGroupsFragment);
 
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
-  const closeSelectedBtn = document.querySelector('.action-btn.close');
-  if (closeSelectedBtn) {
-    closeSelectedBtn.disabled = selectedTabs.size === 0;
-  }
+  
+  const closeSelectedBtn = document.querySelector('.header-actions .action-btn.close');
+  if (closeSelectedBtn) closeSelectedBtn.disabled = selectedTabs.size === 0;
+
+  const pinSelectedBtn = document.querySelector('.header-actions .action-btn.pin');
+  if (pinSelectedBtn) pinSelectedBtn.disabled = selectedTabs.size === 0;
+
+  const reloadSelectedBtn = document.querySelector('.header-actions .action-btn.reload');
+  if (reloadSelectedBtn) reloadSelectedBtn.disabled = selectedTabs.size === 0;
 }
 
 function createTabItem(tab, bookmarkUrls, displayTitle) {
