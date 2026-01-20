@@ -1,6 +1,10 @@
 #tab-manager-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 12px 6px; border-bottom: 1px solid var(--header-bg); margin-bottom: 8px; }
 #tab-manager-header h3 { margin: 0; font-size: 14px; }
 #tab-manager-header .header-actions { display: flex; }
+#tab-manager-header .header-actions .action-btn svg { stroke: #111111; }
+#tab-manager-header .header-actions .action-btn:disabled { opacity: 1; cursor: not-allowed; }
+#tab-manager-header .header-actions .action-btn:disabled svg { stroke: #999999; }
+#tab-manager-header .header-actions .action-btn.close:not(:disabled) svg { stroke: #EC0A11; }
 #search-box { display: block; background-color: var(--search-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-color); padding: 8px; margin-bottom: 12px; font-size: 12px; box-sizing: border-box; width: 100%; }
 #search-box::placeholder { color: var(--placeholder-text); }
 #search-box:focus { border-color: var(--focus-border); outline: none; }
