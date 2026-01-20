@@ -17,6 +17,7 @@
 .browser-tab-item-main-clickable { display: flex; align-items: center; flex-grow: 1; min-width: 0; }
 .browser-tab-item-main-clickable img { width: 16px; height: 16px; margin-right: 8px; flex-shrink: 0; }
 .browser-tab-item-main-clickable span { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.browser-tab-item-main-clickable span.blurred { filter: blur(4px); }
 .browser-tab-actions { display: flex; align-items: center; }
 .action-btn { background: none; border: none; cursor: pointer; padding: 2px 4px; display: flex; align-items: center; justify-content: center; }
 .action-btn svg { width: 14px; height: 14px; stroke: var(--icon-stroke); }

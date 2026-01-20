@@ -13,7 +13,7 @@ A full-featured, real-time manager for all open browser tabs.
 - **Organization:** Automatically groups tabs by window, prioritizes pinned tabs, and displays bookmark names.
 - **Interaction:** Real-time search and drag-and-drop reordering.
 - **Actions:**
-  - **Single Tab:** Pin, Bookmark, Reload, and Close.
+  - **Single Tab:** Pin, Bookmark, Reload, Close, and toggle title visibility.
   - **Bulk:** Merge windows, Pin/Unpin all, Reload all, and Close all non-pinned tabs.
 - **Utility:** Toggle visibility of full tab URLs.
 
