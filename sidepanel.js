@@ -71,30 +71,13 @@ function switchTab(targetId) {
       t.classList.remove('active');
     }
   });
-  
-  const dropdownContent = document.getElementById('dropdown-content');
-  dropdownContent.classList.remove('show');
 }
 
 function setupEventListeners() {
   const tabsContainer = document.querySelector('.tabs');
   const allTabs = document.querySelectorAll('.tab');
-  const dropdownBtn = document.getElementById('dropdown-btn');
-  const dropdownContent = document.getElementById('dropdown-content');
   const searchBox = document.getElementById('search-box');
   const tabManagerContainer = document.getElementById('tab-manager-container');
-
-  // Populate dropdown
-  dropdownContent.innerHTML = '';
-  allTabs.forEach(tab => {
-    const item = document.createElement('a');
-    item.textContent = tab.textContent;
-    item.classList.add('dropdown-item');
-    item.dataset.target = tab.dataset.target;
-    dropdownContent.appendChild(item);
-  });
-
-  const dropdownItems = document.querySelectorAll('.dropdown-item');
 
   // Add event listeners
   searchBox.addEventListener('input', (e) => {
@@ -103,18 +86,6 @@ function setupEventListeners() {
   });
 
   allTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.target)));
-  dropdownItems.forEach(item => item.addEventListener('click', () => switchTab(item.dataset.target)));
-  
-  dropdownBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdownContent.classList.toggle('show');
-  });
-
-  window.addEventListener('click', () => {
-    if (dropdownContent.classList.contains('show')) {
-      dropdownContent.classList.remove('show');
-    }
-  });
 
   tabManagerContainer.addEventListener('click', (e) => {
     if (!e.target.closest('.browser-tab-item')) {

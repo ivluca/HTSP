@@ -10,17 +10,13 @@
     "*://*.googleusercontent.com/*",
     "https://www.googletagmanager.com/*",
     "*://*.gstatic.com/*",
-    "*://accounts.google.com/*",
-    "https://it-tools.tech/*",
-    "https://www.schemecolor.com/*",
-    "*://unicodeplus.com/*"
+    "*://accounts.google.com/*"
   ],
   "permissions": [
     "declarativeNetRequest",
     "sidePanel",
     "tabs",
-    "tabGroups",
-    "bookmarks"
+    "tabGroups"
   ],
   "icons": {
     "128": "images/icon.png",
@@ -37,6 +33,6 @@
     "minimum_width": 324
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/ https://it-tools.tech/ https://www.schemecolor.com/ https://unicodeplus.com/;"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/;"
   }
 }
