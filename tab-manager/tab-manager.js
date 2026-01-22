@@ -1,7 +1,7 @@
 const hiddenTabs = new Set();
 const selectedTabs = new Set();
 
-function setupTabManagerHeader(allTabsArePinned = false) {
+function setupTabManagerHeader() {
   const tabManagerHeader = document.getElementById('tab-manager-header');
   tabManagerHeader.innerHTML = '';
   
@@ -66,9 +66,10 @@ function requestRenderBrowserTabs() {
 async function renderBrowserTabs(filter = '') {
   if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
-  const [browserTabs, allBookmarks, currentWindow] = await Promise.all([
-    chrome.tabs.query({}),
+  const [allWindows, allBookmarks, allTabGroups, currentWindow] = await Promise.all([
+    chrome.windows.getAll({ populate: true, windowTypes: ['normal'] }),
     chrome.bookmarks.getTree(),
+    chrome.tabGroups.query({}),
     chrome.windows.getCurrent()
   ]);
 
@@ -81,64 +82,75 @@ async function renderBrowserTabs(filter = '') {
   }
   extractBookmarkUrls(allBookmarks);
 
-  const windows = new Map();
-  const pinnedTabsFragment = document.createDocumentFragment();
-  let pinnedCount = 0;
-  let unpinnedCount = 0;
+  const groupMap = new Map(allTabGroups.map(group => [group.id, group]));
   const lowerCaseFilter = filter.toLowerCase();
-
-  for (const tab of browserTabs) {
-    const displayTitle = tab.title;
-    const matchesFilter = filter === '' || 
-                          displayTitle.toLowerCase().includes(lowerCaseFilter) || 
-                          (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
-
-    if (matchesFilter) {
-      const tabItem = createTabItem(tab, bookmarkUrls, displayTitle);
-      if (tab.pinned) {
-        pinnedTabsFragment.appendChild(tabItem);
-        pinnedCount++;
-      } else {
-        unpinnedCount++;
-        if (!windows.has(tab.windowId)) {
-          windows.set(tab.windowId, []);
-        }
-        windows.get(tab.windowId).push(tabItem);
-      }
-    }
-  }
   
-  setupTabManagerHeader(unpinnedCount === 0 && pinnedCount > 0);
-  const pinnedTabsSection = document.getElementById('pinned-tabs-section');
-  pinnedTabsSection.style.display = pinnedCount > 0 ? 'block' : 'none';
+  setupTabManagerHeader();
 
   const windowGroupsFragment = document.createDocumentFragment();
-  const sortedWindows = [...windows.entries()].sort((a, b) => {
-    if (a[0] === currentWindow.id) return -1;
-    if (b[0] === currentWindow.id) return 1;
-    return a[0] - b[0];
+  
+  allWindows.sort((a, b) => {
+    if (a.id === currentWindow.id) return -1;
+    if (b.id === currentWindow.id) return 1;
+    return a.id - b.id;
   });
 
   let windowCounter = 1;
-  for (const [windowId, tabItems] of sortedWindows) {
-    const group = document.createElement('div');
-    const title = document.createElement('h3');
-    title.classList.add('section-title');
+  for (const win of allWindows) {
+    const windowTabs = win.tabs.filter(tab => {
+        const displayTitle = tab.title;
+        return filter === '' || 
+               displayTitle.toLowerCase().includes(lowerCaseFilter) || 
+               (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
+    });
+
+    if (windowTabs.length === 0) continue;
+
+    const groupEl = document.createElement('div');
+    const titleEl = document.createElement('h3');
+    titleEl.classList.add('section-title');
     
-    const isCurrentWindow = windowId === currentWindow.id;
+    const isCurrentWindow = win.id === currentWindow.id;
     const titleText = isCurrentWindow ? 'Current Window' : `Window ${windowCounter}`;
-    title.textContent = `${titleText} (${tabItems.length} tabs)`;
+    titleEl.textContent = `${titleText} (${windowTabs.length} tabs)`;
     
-    group.appendChild(title);
-    tabItems.forEach(tabItem => group.appendChild(tabItem));
-    windowGroupsFragment.appendChild(group);
+    groupEl.appendChild(titleEl);
+
+    const pinnedItems = [];
+    const groupItems = new Map();
+    const unpinnedItems = [];
+
+    for (const tab of windowTabs) {
+        const tabItem = createTabItem(tab, bookmarkUrls, tab.title);
+        if (tab.pinned) {
+            pinnedItems.push(tabItem);
+        } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
+            if (!groupItems.has(tab.groupId)) {
+                groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
+            }
+            groupItems.get(tab.groupId).tabs.push(tabItem);
+        } else {
+            unpinnedItems.push(tabItem);
+        }
+    }
+
+    pinnedItems.forEach(item => groupEl.appendChild(item));
+    
+    for (const group of groupItems.values()) {
+        const groupHeader = document.createElement('div');
+        groupHeader.className = `tab-group-header color-${group.color}`;
+        groupHeader.textContent = group.title;
+        groupEl.appendChild(groupHeader);
+        group.tabs.forEach(tabItem => groupEl.appendChild(tabItem));
+    }
+    unpinnedItems.forEach(item => groupEl.appendChild(item));
+
+    windowGroupsFragment.appendChild(groupEl);
     
     if (!isCurrentWindow) windowCounter++;
   }
 
-  const pinnedTabsList = document.getElementById('pinned-tabs-list');
   const windowGroupsContainer = document.getElementById('window-groups-container');
-  pinnedTabsList.replaceChildren(pinnedTabsFragment);
   windowGroupsContainer.replaceChildren(windowGroupsFragment);
 
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
@@ -163,6 +175,7 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
   if (selectedTabs.has(tab.id)) tabItem.classList.add('is-selected');
   
   tabItem.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (e.ctrlKey || e.metaKey) {
       if (selectedTabs.has(tab.id)) {
         selectedTabs.delete(tab.id);

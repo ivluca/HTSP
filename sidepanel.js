@@ -61,8 +61,6 @@ function switchTab(targetId) {
 
   if (targetId === 'tab-manager-container') {
     requestRenderBrowserTabs();
-  } else if (targetId === 'bookmarks-container') {
-    renderBookmarks();
   }
 
   allTabs.forEach(t => {
@@ -84,6 +82,7 @@ function setupEventListeners() {
   const dropdownBtn = document.getElementById('dropdown-btn');
   const dropdownContent = document.getElementById('dropdown-content');
   const searchBox = document.getElementById('search-box');
+  const tabManagerContainer = document.getElementById('tab-manager-container');
 
   // Populate dropdown
   dropdownContent.innerHTML = '';
@@ -114,6 +113,13 @@ function setupEventListeners() {
   window.addEventListener('click', () => {
     if (dropdownContent.classList.contains('show')) {
       dropdownContent.classList.remove('show');
+    }
+  });
+
+  tabManagerContainer.addEventListener('click', (e) => {
+    if (!e.target.closest('.browser-tab-item')) {
+      selectedTabs.clear();
+      renderBrowserTabs();
     }
   });
 
@@ -158,12 +164,6 @@ chrome.runtime.onMessage.addListener((request) => {
     case 'WINDOW_CREATED':
     case 'WINDOW_REMOVED':
       requestRenderBrowserTabs();
-      break;
-    case 'BOOKMARK_CREATED':
-    case 'BOOKMARK_REMOVED':
-    case 'BOOKMARK_CHANGED':
-      requestRenderBrowserTabs();
-      renderBookmarks();
       break;
   }
 });

@@ -13,12 +13,13 @@
     "*://accounts.google.com/*",
     "https://it-tools.tech/*",
     "https://www.schemecolor.com/*",
-    "*://claude.ai/*"
+    "*://unicodeplus.com/*"
   ],
   "permissions": [
     "declarativeNetRequest",
     "sidePanel",
     "tabs",
+    "tabGroups",
     "bookmarks"
   ],
   "icons": {
@@ -32,9 +33,10 @@
     "service_worker": "service-worker.js"
   },
   "side_panel": {
-    "default_path": "sidepanel.html"
+    "default_path": "sidepanel.html",
+    "minimum_width": 324
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/ https://it-tools.tech/ https://www.schemecolor.com/ https://claude.ai/;"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/ https://it-tools.tech/ https://www.schemecolor.com/ https://unicodeplus.com/;"
   }
 }
