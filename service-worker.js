@@ -55,23 +55,6 @@ function initiate() {
           requestDomains: ["accounts.google.com"],
           resourceTypes: ["main_frame", "sub_frame"]
         }
-      },
-      {
-        id: 5,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: [
-            { header: "x-frame-options", operation: "remove" },
-            { header: "frame-options", operation: "remove" },
-            { header: "frame-ancestors", operation: "remove" },
-            { header: "content-security-policy", operation: "remove" }
-          ]
-        },
-        condition: {
-          requestDomains: ["unicodeplus.com"],
-          resourceTypes: ["main_frame", "sub_frame"]
-        }
       }
     ];
 

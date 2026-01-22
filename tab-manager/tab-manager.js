@@ -66,21 +66,11 @@ function requestRenderBrowserTabs() {
 async function renderBrowserTabs(filter = '') {
   if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
-  const [allWindows, allBookmarks, allTabGroups, currentWindow] = await Promise.all([
+  const [allWindows, allTabGroups, currentWindow] = await Promise.all([
     chrome.windows.getAll({ populate: true, windowTypes: ['normal'] }),
-    chrome.bookmarks.getTree(),
     chrome.tabGroups.query({}),
     chrome.windows.getCurrent()
   ]);
-
-  const bookmarkUrls = new Set();
-  function extractBookmarkUrls(nodes) {
-    for (const node of nodes) {
-      if (node.url) bookmarkUrls.add(node.url);
-      if (node.children) extractBookmarkUrls(node.children);
-    }
-  }
-  extractBookmarkUrls(allBookmarks);
 
   const groupMap = new Map(allTabGroups.map(group => [group.id, group]));
   const lowerCaseFilter = filter.toLowerCase();
@@ -112,7 +102,8 @@ async function renderBrowserTabs(filter = '') {
     
     const isCurrentWindow = win.id === currentWindow.id;
     const titleText = isCurrentWindow ? 'Current Window' : `Window ${windowCounter}`;
-    titleEl.textContent = `${titleText} (${windowTabs.length} tabs)`;
+    const totalTabs = windowTabs.length;
+    titleEl.textContent = `${titleText} (${totalTabs} tabs)`;
     
     groupEl.appendChild(titleEl);
 
@@ -121,7 +112,7 @@ async function renderBrowserTabs(filter = '') {
     const unpinnedItems = [];
 
     for (const tab of windowTabs) {
-        const tabItem = createTabItem(tab, bookmarkUrls, tab.title);
+        const tabItem = createTabItem(tab, tab.title);
         if (tab.pinned) {
             pinnedItems.push(tabItem);
         } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
@@ -165,7 +156,7 @@ async function renderBrowserTabs(filter = '') {
   if (reloadSelectedBtn) reloadSelectedBtn.disabled = selectedTabs.size === 0;
 }
 
-function createTabItem(tab, bookmarkUrls, displayTitle) {
+function createTabItem(tab, displayTitle) {
   const tabItem = document.createElement('div');
   tabItem.classList.add('browser-tab-item');
   tabItem.dataset.tabId = tab.id;
@@ -198,8 +189,6 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
   clickablePart.classList.add('browser-tab-item-main-clickable');
   clickablePart.title = displayTitle;
   
-  const isBookmarked = bookmarkUrls.has(tab.url);
-  
   const favicon = document.createElement('img');
   favicon.src = tab.favIconUrl || 'images/icon.png';
   clickablePart.appendChild(favicon);
@@ -217,15 +206,6 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
   const pinBtn = createActionButton('pin', tab.pinned, () => {
     chrome.tabs.update(tab.id, { pinned: !tab.pinned }, requestRenderBrowserTabs);
   });
-  const bookmarkBtn = createActionButton('star', isBookmarked, async () => {
-    if (isBookmarked) {
-      const bookmarks = await chrome.bookmarks.search({url: tab.url});
-      for (const bm of bookmarks) await chrome.bookmarks.remove(bm.id);
-    } else {
-      await chrome.bookmarks.create({title: tab.title, url: tab.url});
-    }
-    requestRenderBrowserTabs();
-  });
   const eyeBtn = createActionButton('eye', hiddenTabs.has(tab.id), () => {
     if (hiddenTabs.has(tab.id)) {
       hiddenTabs.delete(tab.id);
@@ -240,7 +220,7 @@ function createTabItem(tab, bookmarkUrls, displayTitle) {
     selectedTabs.delete(tab.id);
   });
 
-  actions.append(pinBtn, bookmarkBtn, eyeBtn, reloadBtn, closeBtn);
+  actions.append(pinBtn, eyeBtn, reloadBtn, closeBtn);
   mainPart.append(clickablePart, actions);
 
   const urlPart = document.createElement('div');
