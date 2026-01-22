@@ -57,7 +57,7 @@ function initiate() {
         }
       },
       {
-        id: 4,
+        id: 5,
         priority: 1,
         action: {
           type: "modifyHeaders",
@@ -69,7 +69,7 @@ function initiate() {
           ]
         },
         condition: {
-          requestDomains: ["claude.ai"],
+          requestDomains: ["unicodeplus.com"],
           resourceTypes: ["main_frame", "sub_frame"]
         }
       }
@@ -106,9 +106,5 @@ chrome.tabs.onActivated.addListener((activeInfo) => sendMessageToSidePanel({ typ
 
 chrome.windows.onCreated.addListener((window) => sendMessageToSidePanel({ type: 'WINDOW_CREATED', windowId: window.id }));
 chrome.windows.onRemoved.addListener((windowId) => sendMessageToSidePanel({ type: 'WINDOW_REMOVED', windowId }));
-
-chrome.bookmarks.onCreated.addListener((id, bookmark) => sendMessageToSidePanel({ type: 'BOOKMARK_CREATED', id, bookmark }));
-chrome.bookmarks.onRemoved.addListener((id, removeInfo) => sendMessageToSidePanel({ type: 'BOOKMARK_REMOVED', id, removeInfo }));
-chrome.bookmarks.onChanged.addListener((id, changeInfo) => sendMessageToSidePanel({ type: 'BOOKMARK_CHANGED', id, changeInfo }));
 
 initiate();

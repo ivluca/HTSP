@@ -3,7 +3,6 @@
     <title>HTSP</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="tab-manager/tab-manager.css">
-    <link rel="stylesheet" href="bookmarks/bookmarks.css">
   </head>
   <body>
     <div id="header">
@@ -11,10 +10,9 @@
         <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
-        <div class="tab" data-target="claude-frame">Claude</div>
         <div class="tab" data-target="it-tools-frame">IT Tools</div>
         <div class="tab" data-target="scheme-color-frame">Scheme Color</div>
-        <div class="tab" data-target="bookmarks-container">Bookmarks</div>
+        <div class="tab" data-target="unicodeplus-frame">UnicodePlus</div>
       </div>
       <div class="dropdown">
         <button id="dropdown-btn" class="dropdown-btn">
@@ -33,24 +31,18 @@
         <div id="tab-manager-header"></div>
         <label for="search-box"></label>
         <input type="text" id="search-box" placeholder="Search tabs...">
-        <div id="pinned-tabs-section">
-          <h3 class="section-title">Pinned Tabs</h3>
-          <div id="pinned-tabs-list"></div>
-        </div>
         <div id="window-groups-container">
           <!-- Window groups will be rendered here by JS -->
         </div>
       </div>
       <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
-      <iframe id="claude-frame" class="ai-frame hidden" src="https://claude.ai/" allow="clipboard-write; microphone"></iframe>
       <iframe id="it-tools-frame" class="ai-frame hidden" src="https://it-tools.tech/" allow="clipboard-write; microphone"></iframe>
       <iframe id="scheme-color-frame" class="ai-frame hidden" src="https://www.schemecolor.com/" allow="clipboard-write; microphone"></iframe>
-      <div id="bookmarks-container" class="ai-frame hidden"></div>
+      <iframe id="unicodeplus-frame" class="ai-frame hidden" src="https://unicodeplus.com/category" allow="clipboard-write; microphone"></iframe>
     </div>
     <script src="sidepanel.js"></script>
     <script src="tab-manager/tab-manager.js"></script>
-    <script src="bookmarks/bookmarks.js"></script>
     <script src="init.js"></script>
   </body>
 </html>
