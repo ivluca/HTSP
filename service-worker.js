@@ -22,23 +22,23 @@ function initiate() {
           resourceTypes: ["main_frame", "sub_frame"]
         }
       },
-      // {
-      //   id: 2,
-      //   priority: 1,
-      //   action: {
-      //     type: "modifyHeaders",
-      //     responseHeaders: [
-      //       { header: "x-frame-options", operation: "remove" },
-      //       { header: "frame-options", operation: "remove" },
-      //       { header: "frame-ancestors", operation: "remove" },
-      //       { header: "content-security-policy", operation: "remove" }
-      //     ]
-      //   },
-      //   condition: {
-      //     requestDomains: ["gemini.google.com"],
-      //     resourceTypes: ["main_frame", "sub_frame"]
-      //   }
-      // },
+      {
+        id: 2,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          responseHeaders: [
+            { header: "x-frame-options", operation: "remove" },
+            { header: "frame-options", operation: "remove" },
+            { header: "frame-ancestors", operation: "remove" },
+            { header: "content-security-policy", operation: "remove" }
+          ]
+        },
+        condition: {
+          requestDomains: ["gemini.google.com"],
+          resourceTypes: ["main_frame", "sub_frame"]
+        }
+      },
       {
         id: 3,
         priority: 1,

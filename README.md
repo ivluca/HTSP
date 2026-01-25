@@ -5,17 +5,16 @@
 ## ✨ Features
 
 ### 1. Integrated Web Panels
-- Quick access to `ChatGPT` in separate tabs.
+- Quick access to `ChatGPT` and `Gemini` in separate tabs.
 - Content is automatically scaled to fit the Side Panel's compact view.
 
 ### 2. Tab Manager
 A full-featured, real-time manager for all open browser tabs.
-- **Organization:** Automatically groups tabs by window, prioritizes pinned tabs, and displays tab titles.
-- **Interaction:** Real-time search and `Ctrl/Meta + Click` for multi-selection.
+- **Organization:** Automatically groups tabs by window, prioritizes pinned tabs, and displays the original web page title.
+- **Interaction:** Real-time search and drag-and-drop reordering within the same window.
 - **Actions:**
-  - **Single Tab:** Pin, Reload, Close, and toggle title visibility.
-  - **Bulk (on selected tabs):** Pin/Unpin, Reload, and Close.
-  - **Global:** Merge windows.
+  - **Single Tab:** Pin, Bookmark, Reload, and Close.
+  - **Bulk:** Merge all windows, Pin/Unpin all, Reload all, and Close all non-pinned tabs.
 - **Utility:** Toggle visibility of full tab URLs.
 
 ## Installation
