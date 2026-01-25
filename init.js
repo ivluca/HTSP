@@ -1,4 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
   setupTabManagerHeader();
-  switchTab('tab-manager-container');
+  switchTab('gemini-frame');
 });
