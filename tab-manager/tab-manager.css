@@ -36,8 +36,8 @@
 .browser-tab-item:hover { background-color: var(--item-hover-bg); }
 .browser-tab-item.is-active { background-color: var(--active-item-bg); }
 .browser-tab-item.is-selected { background-color: var(--active-item-bg); }
-.browser-tab-item.is-active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background-color: var(--active-item-border); border-radius: 4px 0 0 4px; }
-.browser-tab-item.is-selected::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background-color: var(--active-item-border); border-radius: 0 4px 4px 0; }
+.browser-tab-item.is-active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0; /* Removed active indicator */ }
+.browser-tab-item.is-selected::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background-color: #324b86; /* Changed color for selected indicator */ border-radius: 4px 0 0 4px; }
 .browser-tab-item.dragging { opacity: 0.4; background-color: var(--item-hover-bg); }
 .browser-tab-item.drag-over-top { border-top-color: var(--focus-border); }
 .browser-tab-item.drag-over-bottom { border-bottom-color: var(--focus-border); }

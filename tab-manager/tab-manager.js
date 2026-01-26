@@ -148,13 +148,15 @@ async function renderBrowserTabs(filter = '') {
       chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
       groupHeader.prepend(chevron);
 
-      groupHeader.addEventListener('click', () => {
-        if (collapsedGroups.has(group.id)) {
-          collapsedGroups.delete(group.id);
-        } else {
+      groupHeader.addEventListener('click', async () => { // Made async
+        const newCollapsedState = !collapsedGroups.has(group.id);
+        if (newCollapsedState) {
           collapsedGroups.add(group.id);
+        } else {
+          collapsedGroups.delete(group.id);
         }
-        chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+        await chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+        await chrome.tabGroups.update(group.id, { collapsed: newCollapsedState }); // Update browser tab group
         renderBrowserTabs();
       });
 
