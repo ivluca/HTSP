@@ -26,6 +26,14 @@ function setupTabManagerHeader() {
     renderBrowserTabs();
   });
 
+  const groupBtn = createActionButton('folderOpen', false, () => {
+    const tabIds = Array.from(selectedTabs);
+    if (tabIds.length > 0) {
+      showGroupDialog(tabIds);
+    }
+  });
+  groupBtn.disabled = selectedTabs.size === 0;
+
   const pinSelectedBtn = createActionButton('pin', false, async () => {
     for (const tabId of selectedTabs) {
       const tab = await chrome.tabs.get(tabId);
@@ -54,7 +62,7 @@ function setupTabManagerHeader() {
   });
   closeSelectedBtn.disabled = selectedTabs.size === 0;
 
-  actions.append(mergeBtn, showLinksBtn, pinSelectedBtn, reloadSelectedBtn, closeSelectedBtn);
+  actions.append(mergeBtn, showLinksBtn, groupBtn, pinSelectedBtn, reloadSelectedBtn, closeSelectedBtn);
   tabManagerHeader.append(title, actions);
 }
 
@@ -166,6 +174,9 @@ async function renderBrowserTabs(filter = '') {
 
   const reloadSelectedBtn = document.querySelector('.header-actions .action-btn.reload');
   if (reloadSelectedBtn) reloadSelectedBtn.disabled = selectedTabs.size === 0;
+
+  const groupBtn = document.querySelector('.header-actions .action-btn.folderOpen');
+  if (groupBtn) groupBtn.disabled = selectedTabs.size === 0;
 }
 
 function createTabItem(tab, displayTitle) {
@@ -200,6 +211,13 @@ function createTabItem(tab, displayTitle) {
   const clickablePart = document.createElement('div');
   clickablePart.classList.add('browser-tab-item-main-clickable');
   clickablePart.title = displayTitle;
+
+  if (tab.groupId !== -1) {
+    const groupIcon = document.createElement('div');
+    groupIcon.classList.add('group-icon');
+    groupIcon.innerHTML = icons.commit;
+    clickablePart.appendChild(groupIcon);
+  }
   
   const favicon = document.createElement('img');
   favicon.src = tab.favIconUrl || 'images/icon.png';
@@ -242,4 +260,72 @@ function createTabItem(tab, displayTitle) {
 
   tabItem.append(mainPart, urlPart);
   return tabItem;
+}
+
+function showGroupDialog(tabIds) {
+  const dialog = document.createElement('div');
+  dialog.className = 'dialog-overlay';
+
+  const dialogContent = document.createElement('div');
+  dialogContent.className = 'dialog-content';
+
+  const title = document.createElement('h3');
+  title.textContent = 'Create Tab Group';
+  dialogContent.appendChild(title);
+
+  const form = document.createElement('form');
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Group Name';
+  form.appendChild(nameInput);
+
+  const colors = ['teal', 'magenta', 'orange', 'blue', 'dark-gray', 'light-gray', 'green', 'purple', 'brown', 'yellow', 'cyan', 'navy'];
+  const colorContainer = document.createElement('div');
+  colorContainer.className = 'color-options';
+  
+  colors.forEach(color => {
+    const colorOption = document.createElement('div');
+    colorOption.className = `color-option color-${color}`;
+    colorOption.dataset.color = color;
+    if (color === 'teal') colorOption.classList.add('selected');
+    colorOption.addEventListener('click', () => {
+      document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+      colorOption.classList.add('selected');
+    });
+    colorContainer.appendChild(colorOption);
+  });
+  form.appendChild(colorContainer);
+
+  const buttonContainer = document.createElement('div');
+  buttonContainer.className = 'dialog-buttons';
+
+  const createBtn = document.createElement('button');
+  createBtn.type = 'submit';
+  createBtn.textContent = 'Create';
+  buttonContainer.appendChild(createBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => dialog.remove());
+  buttonContainer.appendChild(cancelBtn);
+  
+  form.appendChild(buttonContainer);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const groupName = nameInput.value;
+    const selectedColor = document.querySelector('.color-option.selected').dataset.color;
+    
+    const groupId = await chrome.tabs.group({ tabIds });
+    await chrome.tabGroups.update(groupId, { title: groupName, color: selectedColor });
+    
+    dialog.remove();
+    requestRenderBrowserTabs();
+  });
+
+  dialogContent.appendChild(form);
+  dialog.appendChild(dialogContent);
+  document.body.appendChild(dialog);
+  nameInput.focus();
 }
