@@ -9,8 +9,30 @@
 #search-box::placeholder { color: var(--placeholder-text); }
 #search-box:focus { border-color: var(--focus-border); outline: none; }
 .section-title { font-size: 11px; text-transform: uppercase; color: var(--section-title-text); margin: 12px 0 4px 0; }
-.browser-tab-item { display: flex; flex-direction: column; align-items: stretch; padding: 6px;
-  border-radius: 4px; position: relative; cursor: pointer; transition: background-color 0.2s ease; border-top: 2px solid transparent; border-bottom: 2px solid transparent; margin-top: -2px; margin-bottom: 0; }
+.browser-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6px;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  margin-top: -2px;
+  margin-bottom: 0;
+  overflow: hidden; /* Added for smooth collapse */
+  max-height: 50px; /* Approximate initial height for transition */
+  opacity: 1; /* Initial opacity for transition */
+}
+.browser-tab-item.is-collapsed-item {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
 .browser-tab-item:hover { background-color: var(--item-hover-bg); }
 .browser-tab-item.is-active { background-color: var(--active-item-bg); }
 .browser-tab-item.is-selected { background-color: var(--active-item-bg); }
@@ -51,17 +73,16 @@
 .dialog-buttons button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; }
 .dialog-buttons button[type="submit"] { background-color: var(--focus-border); color: white; }
 .dialog-buttons button[type="button"] { background-color: var(--item-hover-bg); color: var(--text-color); }
-.tab-group-header { padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; margin: 4px 0; color: white; }
+.tab-group-header { padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; margin: 4px 0; color: white; display: flex; align-items: center; cursor: pointer; }
+.tab-group-header .chevron { margin-right: 5px; display: flex; align-items: center; }
+.tab-group-header .chevron svg { width: 16px; height: 16px; stroke: white; }
 
-.color-teal { background-color: #284FAA; }
-.color-magenta { background-color: #B01C89; }
-.color-orange { background-color: #FBAC73; }
 .color-blue { background-color: #0279E7; }
-.color-dark-gray { background-color: #1F262E; }
-.color-light-gray { background-color: #F3F3F3; color: #1F262E }
-.color-green { background-color: #07C872; }
-.color-purple { background-color: #A35DA1; }
-.color-brown { background-color: #D6966B; }
-.color-yellow { background-color: #DEC981; }
 .color-cyan { background-color: #56B0A7; }
-.color-navy { background-color: #3F5C8F; }
+.color-green { background-color: #07C872; }
+.color-grey { background-color: #1F262E; }
+.color-orange { background-color: #FBAC73; }
+.color-pink { background-color: #B01C89; }
+.color-purple { background-color: #A35DA1; }
+.color-red { background-color: #D6966B; }
+.color-yellow { background-color: #DEC981; }

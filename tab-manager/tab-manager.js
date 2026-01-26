@@ -1,5 +1,6 @@
 const hiddenTabs = new Set();
 const selectedTabs = new Set();
+const collapsedGroups = new Set();
 
 function setupTabManagerHeader() {
   const tabManagerHeader = document.getElementById('tab-manager-header');
@@ -74,11 +75,17 @@ function requestRenderBrowserTabs() {
 async function renderBrowserTabs(filter = '') {
   if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
-  const [allWindows, allTabGroups, currentWindow] = await Promise.all([
+  const [allWindows, allTabGroups, currentWindow, storage] = await Promise.all([
     chrome.windows.getAll({ populate: true, windowTypes: ['normal'] }),
     chrome.tabGroups.query({}),
-    chrome.windows.getCurrent()
+    chrome.windows.getCurrent(),
+    chrome.storage.local.get('collapsedGroups')
   ]);
+
+  if (storage.collapsedGroups) {
+    collapsedGroups.clear(); // Clear previous state to avoid stale data
+    storage.collapsedGroups.forEach(id => collapsedGroups.add(id));
+  }
 
   const groupMap = new Map(allTabGroups.map(group => [group.id, group]));
   const lowerCaseFilter = filter.toLowerCase();
@@ -124,7 +131,7 @@ async function renderBrowserTabs(filter = '') {
       }
     }
 
-    if (!hasUnpinned) continue;
+    if (windowTabs.length === 0) continue; // Only continue if there are tabs in the window
 
     const groupEl = document.createElement('div');
     const titleEl = document.createElement('h3');
@@ -141,8 +148,30 @@ async function renderBrowserTabs(filter = '') {
         const groupHeader = document.createElement('div');
         groupHeader.className = `tab-group-header color-${group.color}`;
         groupHeader.textContent = group.title;
+
+        const chevron = document.createElement('span');
+        chevron.classList.add('chevron');
+        const isCollapsed = collapsedGroups.has(group.id);
+        chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
+        groupHeader.prepend(chevron);
+
+        groupHeader.addEventListener('click', () => {
+          if (collapsedGroups.has(group.id)) {
+            collapsedGroups.delete(group.id);
+          } else {
+            collapsedGroups.add(group.id);
+          }
+          chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+          renderBrowserTabs();
+        });
+
         groupEl.appendChild(groupHeader);
-        group.tabs.forEach(tabItem => groupEl.appendChild(tabItem));
+        group.tabs.forEach(tabItem => {
+          if (isCollapsed) {
+            tabItem.classList.add('is-collapsed-item');
+          }
+          groupEl.appendChild(tabItem);
+        });
     }
     unpinnedItems.forEach(item => groupEl.appendChild(item));
 
@@ -279,7 +308,7 @@ function showGroupDialog(tabIds) {
   nameInput.placeholder = 'Group Name';
   form.appendChild(nameInput);
 
-  const colors = ['teal', 'magenta', 'orange', 'blue', 'dark-gray', 'light-gray', 'green', 'purple', 'brown', 'yellow', 'cyan', 'navy'];
+  const colors = ['blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'];
   const colorContainer = document.createElement('div');
   colorContainer.className = 'color-options';
   
@@ -287,7 +316,7 @@ function showGroupDialog(tabIds) {
     const colorOption = document.createElement('div');
     colorOption.className = `color-option color-${color}`;
     colorOption.dataset.color = color;
-    if (color === 'teal') colorOption.classList.add('selected');
+    if (color === 'blue') colorOption.classList.add('selected'); // Default to blue
     colorOption.addEventListener('click', () => {
       document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
       colorOption.classList.add('selected');
@@ -314,12 +343,14 @@ function showGroupDialog(tabIds) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const groupName = nameInput.value;
+    const groupName = nameInput.value.trim();
     const selectedColor = document.querySelector('.color-option.selected').dataset.color;
     
-    const groupId = await chrome.tabs.group({ tabIds });
-    await chrome.tabGroups.update(groupId, { title: groupName, color: selectedColor });
+    // Always create a new group
+    const newGroupId = await chrome.tabs.group({ tabIds });
+    await chrome.tabGroups.update(newGroupId, { title: groupName, color: selectedColor });
     
+    selectedTabs.clear();
     dialog.remove();
     requestRenderBrowserTabs();
   });
