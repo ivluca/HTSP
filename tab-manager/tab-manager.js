@@ -78,7 +78,8 @@ async function renderBrowserTabs(filter = '') {
   setupTabManagerHeader();
 
   const windowGroupsFragment = document.createDocumentFragment();
-  
+  const allPinnedItems = [];
+
   allWindows.sort((a, b) => {
     if (a.id === currentWindow.id) return -1;
     if (b.id === currentWindow.id) return 1;
@@ -94,7 +95,28 @@ async function renderBrowserTabs(filter = '') {
                (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
     });
 
-    if (windowTabs.length === 0) continue;
+    const groupItems = new Map();
+    const unpinnedItems = [];
+    let hasUnpinned = false;
+
+    for (const tab of windowTabs) {
+      if (tab.pinned) {
+        allPinnedItems.push(createTabItem(tab, tab.title));
+      } else {
+        hasUnpinned = true;
+        const tabItem = createTabItem(tab, tab.title);
+        if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
+          if (!groupItems.has(tab.groupId)) {
+            groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
+          }
+          groupItems.get(tab.groupId).tabs.push(tabItem);
+        } else {
+          unpinnedItems.push(tabItem);
+        }
+      }
+    }
+
+    if (!hasUnpinned) continue;
 
     const groupEl = document.createElement('div');
     const titleEl = document.createElement('h3');
@@ -102,30 +124,10 @@ async function renderBrowserTabs(filter = '') {
     
     const isCurrentWindow = win.id === currentWindow.id;
     const titleText = isCurrentWindow ? 'Current Window' : `Window ${windowCounter}`;
-    const totalTabs = windowTabs.length;
-    titleEl.textContent = `${titleText} (${totalTabs} tabs)`;
+    const totalUnpinnedTabs = unpinnedItems.length + Array.from(groupItems.values()).reduce((acc, group) => acc + group.tabs.length, 0);
+    titleEl.textContent = `${titleText} (${totalUnpinnedTabs} tabs)`;
     
     groupEl.appendChild(titleEl);
-
-    const pinnedItems = [];
-    const groupItems = new Map();
-    const unpinnedItems = [];
-
-    for (const tab of windowTabs) {
-        const tabItem = createTabItem(tab, tab.title);
-        if (tab.pinned) {
-            pinnedItems.push(tabItem);
-        } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
-            if (!groupItems.has(tab.groupId)) {
-                groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
-            }
-            groupItems.get(tab.groupId).tabs.push(tabItem);
-        } else {
-            unpinnedItems.push(tabItem);
-        }
-    }
-
-    pinnedItems.forEach(item => groupEl.appendChild(item));
     
     for (const group of groupItems.values()) {
         const groupHeader = document.createElement('div');
@@ -139,6 +141,16 @@ async function renderBrowserTabs(filter = '') {
     windowGroupsFragment.appendChild(groupEl);
     
     if (!isCurrentWindow) windowCounter++;
+  }
+
+  if (allPinnedItems.length > 0) {
+    const pinsGroupEl = document.createElement('div');
+    const pinsTitleEl = document.createElement('h3');
+    pinsTitleEl.classList.add('section-title');
+    pinsTitleEl.textContent = `Pins (${allPinnedItems.length} tabs)`;
+    pinsGroupEl.appendChild(pinsTitleEl);
+    allPinnedItems.forEach(item => pinsGroupEl.appendChild(item));
+    windowGroupsFragment.prepend(pinsGroupEl);
   }
 
   const windowGroupsContainer = document.getElementById('window-groups-container');
