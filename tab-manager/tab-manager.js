@@ -140,15 +140,25 @@ async function renderBrowserTabs(filter = '') {
     for (const group of groupItems.values()) {
       const groupHeader = document.createElement('div');
       groupHeader.className = `tab-group-header color-${group.color}`;
-      groupHeader.textContent = group.title;
+      
+      const leftContent = document.createElement('div');
+      leftContent.style.display = 'flex';
+      leftContent.style.alignItems = 'center';
 
       const chevron = document.createElement('span');
       chevron.classList.add('chevron');
       const isCollapsed = collapsedGroups.has(group.id);
       chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
-      groupHeader.prepend(chevron);
+      leftContent.appendChild(chevron);
 
-      groupHeader.addEventListener('click', async () => { // Made async
+      const groupTitle = document.createElement('span');
+      groupTitle.textContent = group.title;
+      leftContent.appendChild(groupTitle);
+      
+      groupHeader.appendChild(leftContent);
+
+      groupHeader.addEventListener('click', async (e) => {
+        if (e.target.closest('.action-btn')) return;
         const newCollapsedState = !collapsedGroups.has(group.id);
         if (newCollapsedState) {
           collapsedGroups.add(group.id);
@@ -156,9 +166,19 @@ async function renderBrowserTabs(filter = '') {
           collapsedGroups.delete(group.id);
         }
         await chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
-        await chrome.tabGroups.update(group.id, { collapsed: newCollapsedState }); // Update browser tab group
+        await chrome.tabGroups.update(group.id, { collapsed: newCollapsedState });
         renderBrowserTabs();
       });
+
+      const ungroupAllBtn = createActionButton('ungroup', false, async () => {
+        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        const tabIdsToUngroup = tabsInGroup.map(tab => tab.id);
+        if (tabIdsToUngroup.length > 0) {
+          await chrome.tabs.ungroup(tabIdsToUngroup);
+          requestRenderBrowserTabs();
+        }
+      });
+      groupHeader.appendChild(ungroupAllBtn);
 
       groupedTabsEl.appendChild(groupHeader);
       group.tabs.forEach(tabItem => {
@@ -271,6 +291,7 @@ function createTabItem(tab, displayTitle) {
   });
 
   actions.append(pinBtn, eyeBtn, reloadBtn, closeBtn);
+
   mainPart.append(clickablePart, actions);
 
   const urlPart = document.createElement('div');
