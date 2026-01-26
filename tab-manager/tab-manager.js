@@ -75,15 +75,14 @@ function requestRenderBrowserTabs() {
 async function renderBrowserTabs(filter = '') {
   if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
-  const [allWindows, allTabGroups, currentWindow, storage] = await Promise.all([
+  const [allWindows, allTabGroups, storage] = await Promise.all([
     chrome.windows.getAll({ populate: true, windowTypes: ['normal'] }),
     chrome.tabGroups.query({}),
-    chrome.windows.getCurrent(),
     chrome.storage.local.get('collapsedGroups')
   ]);
 
   if (storage.collapsedGroups) {
-    collapsedGroups.clear(); // Clear previous state to avoid stale data
+    collapsedGroups.clear();
     storage.collapsedGroups.forEach(id => collapsedGroups.add(id));
   }
 
@@ -92,106 +91,96 @@ async function renderBrowserTabs(filter = '') {
   
   setupTabManagerHeader();
 
-  const windowGroupsFragment = document.createDocumentFragment();
-  const allPinnedItems = [];
+  const fragment = document.createDocumentFragment();
+  
+  const allTabs = allWindows.flatMap(win => win.tabs);
 
-  allWindows.sort((a, b) => {
-    if (a.id === currentWindow.id) return -1;
-    if (b.id === currentWindow.id) return 1;
-    return a.id - b.id;
+  const filteredTabs = allTabs.filter(tab => {
+    const displayTitle = tab.title;
+    return filter === '' || 
+           displayTitle.toLowerCase().includes(lowerCaseFilter) || 
+           (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
   });
 
-  let windowCounter = 1;
-  for (const win of allWindows) {
-    const windowTabs = win.tabs.filter(tab => {
-        const displayTitle = tab.title;
-        return filter === '' || 
-               displayTitle.toLowerCase().includes(lowerCaseFilter) || 
-               (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
-    });
+  const pinnedItems = [];
+  const groupItems = new Map();
+  const unpinnedItems = [];
 
-    const groupItems = new Map();
-    const unpinnedItems = [];
-    let hasUnpinned = false;
-
-    for (const tab of windowTabs) {
-      if (tab.pinned) {
-        allPinnedItems.push(createTabItem(tab, tab.title));
-      } else {
-        hasUnpinned = true;
-        const tabItem = createTabItem(tab, tab.title);
-        if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
-          if (!groupItems.has(tab.groupId)) {
-            groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
-          }
-          groupItems.get(tab.groupId).tabs.push(tabItem);
-        } else {
-          unpinnedItems.push(tabItem);
-        }
+  for (const tab of filteredTabs) {
+    const tabItem = createTabItem(tab, tab.title);
+    if (tab.pinned) {
+      pinnedItems.push(tabItem);
+    } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
+      if (!groupItems.has(tab.groupId)) {
+        groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
       }
+      groupItems.get(tab.groupId).tabs.push(tabItem);
+    } else {
+      unpinnedItems.push(tabItem);
     }
-
-    if (windowTabs.length === 0) continue; // Only continue if there are tabs in the window
-
-    const groupEl = document.createElement('div');
-    const titleEl = document.createElement('h3');
-    titleEl.classList.add('section-title');
-    
-    const isCurrentWindow = win.id === currentWindow.id;
-    const titleText = isCurrentWindow ? 'Current Window' : `Window ${windowCounter}`;
-    const totalUnpinnedTabs = unpinnedItems.length + Array.from(groupItems.values()).reduce((acc, group) => acc + group.tabs.length, 0);
-    titleEl.textContent = `${titleText} (${totalUnpinnedTabs} tabs)`;
-    
-    groupEl.appendChild(titleEl);
-    
-    for (const group of groupItems.values()) {
-        const groupHeader = document.createElement('div');
-        groupHeader.className = `tab-group-header color-${group.color}`;
-        groupHeader.textContent = group.title;
-
-        const chevron = document.createElement('span');
-        chevron.classList.add('chevron');
-        const isCollapsed = collapsedGroups.has(group.id);
-        chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
-        groupHeader.prepend(chevron);
-
-        groupHeader.addEventListener('click', () => {
-          if (collapsedGroups.has(group.id)) {
-            collapsedGroups.delete(group.id);
-          } else {
-            collapsedGroups.add(group.id);
-          }
-          chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
-          renderBrowserTabs();
-        });
-
-        groupEl.appendChild(groupHeader);
-        group.tabs.forEach(tabItem => {
-          if (isCollapsed) {
-            tabItem.classList.add('is-collapsed-item');
-          }
-          groupEl.appendChild(tabItem);
-        });
-    }
-    unpinnedItems.forEach(item => groupEl.appendChild(item));
-
-    windowGroupsFragment.appendChild(groupEl);
-    
-    if (!isCurrentWindow) windowCounter++;
   }
 
-  if (allPinnedItems.length > 0) {
+  if (pinnedItems.length > 0) {
     const pinsGroupEl = document.createElement('div');
     const pinsTitleEl = document.createElement('h3');
     pinsTitleEl.classList.add('section-title');
-    pinsTitleEl.textContent = `Pins (${allPinnedItems.length} tabs)`;
+    pinsTitleEl.textContent = `Pins (${pinnedItems.length} tabs)`;
     pinsGroupEl.appendChild(pinsTitleEl);
-    allPinnedItems.forEach(item => pinsGroupEl.appendChild(item));
-    windowGroupsFragment.prepend(pinsGroupEl);
+    pinnedItems.forEach(item => pinsGroupEl.appendChild(item));
+    fragment.appendChild(pinsGroupEl);
+  }
+
+  if (groupItems.size > 0) {
+    const groupedTabsEl = document.createElement('div');
+    const groupedTabsTitleEl = document.createElement('h3');
+    groupedTabsTitleEl.classList.add('section-title');
+    groupedTabsTitleEl.textContent = 'Grouped Tabs';
+    groupedTabsEl.appendChild(groupedTabsTitleEl);
+
+    for (const group of groupItems.values()) {
+      const groupHeader = document.createElement('div');
+      groupHeader.className = `tab-group-header color-${group.color}`;
+      groupHeader.textContent = group.title;
+
+      const chevron = document.createElement('span');
+      chevron.classList.add('chevron');
+      const isCollapsed = collapsedGroups.has(group.id);
+      chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
+      groupHeader.prepend(chevron);
+
+      groupHeader.addEventListener('click', () => {
+        if (collapsedGroups.has(group.id)) {
+          collapsedGroups.delete(group.id);
+        } else {
+          collapsedGroups.add(group.id);
+        }
+        chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+        renderBrowserTabs();
+      });
+
+      groupedTabsEl.appendChild(groupHeader);
+      group.tabs.forEach(tabItem => {
+        if (isCollapsed) {
+          tabItem.classList.add('is-collapsed-item');
+        }
+        groupedTabsEl.appendChild(tabItem);
+      });
+    }
+    fragment.appendChild(groupedTabsEl);
+  }
+
+  if (unpinnedItems.length > 0) {
+    const otherTabsEl = document.createElement('div');
+    const otherTabsTitleEl = document.createElement('h3');
+    otherTabsTitleEl.classList.add('section-title');
+    otherTabsTitleEl.textContent = `Other Tabs (${unpinnedItems.length} tabs)`;
+    otherTabsEl.appendChild(otherTabsTitleEl);
+    unpinnedItems.forEach(item => otherTabsEl.appendChild(item));
+    fragment.appendChild(otherTabsEl);
   }
 
   const windowGroupsContainer = document.getElementById('window-groups-container');
-  windowGroupsContainer.replaceChildren(windowGroupsFragment);
+  windowGroupsContainer.replaceChildren(fragment);
 
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   
