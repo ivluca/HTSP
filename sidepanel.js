@@ -143,5 +143,11 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
+chrome.tabGroups.onUpdated.addListener((group) => {
+  if (group.collapsed !== undefined) {
+    requestRenderBrowserTabs();
+  }
+});
+
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkColorScheme);
 checkColorScheme();
