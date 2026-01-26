@@ -44,8 +44,8 @@
 .dialog-content h3 { margin-top: 0; }
 .dialog-content form { display: flex; flex-direction: column; }
 .dialog-content input { margin-bottom: 10px; padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--search-bg); color: var(--text-color); }
-.color-options { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 5px; }
-.color-option { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+.color-options { display: flex; justify-content: flex-start; margin-bottom: 15px; flex-wrap: wrap; gap: 5px; }
+.color-option { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
 .color-option.selected { border-color: var(--focus-border); }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 10px; }
 .dialog-buttons button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; }
