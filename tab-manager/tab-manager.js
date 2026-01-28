@@ -248,9 +248,12 @@ function createTabItem(tab, displayTitle) {
   tabItem.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     if (!selectedTabs.has(tab.id)) {
+      document.querySelectorAll('.browser-tab-item.is-selected').forEach(item => {
+        item.classList.remove('is-selected');
+      });
+      tabItem.classList.add('is-selected');
       selectedTabs.clear();
       selectedTabs.add(tab.id);
-      renderBrowserTabs();
     }
     showContextMenu(e.pageX, e.pageY);
   });
@@ -380,8 +383,6 @@ function showContextMenu(x, y) {
         const groupedSelectedTabIds = tabsInfo.filter(tab => tab.groupId !== -1).map(tab => tab.id);
         if (groupedSelectedTabIds.length > 0) {
           await chrome.tabs.ungroup(groupedSelectedTabIds);
-          selectedTabs.clear();
-          requestRenderBrowserTabs();
         }
       }
     },
@@ -390,7 +391,6 @@ function showContextMenu(x, y) {
           const tab = await chrome.tabs.get(tabId);
           await chrome.tabs.update(tabId, { pinned: !tab.pinned });
         }
-        requestRenderBrowserTabs();
       }
     },
     { label: 'Reload', icon: 'reload', action: async () => {
@@ -404,8 +404,6 @@ function showContextMenu(x, y) {
         const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
         if (tabsToDelete.length > 0) {
           await chrome.tabs.remove(tabsToDelete);
-          selectedTabs.clear();
-          requestRenderBrowserTabs();
         }
       }
     },
@@ -417,7 +415,6 @@ function showContextMenu(x, y) {
             hiddenTabs.add(tabId);
           }
         }
-        requestRenderBrowserTabs();
       }
     }
   ];
@@ -435,9 +432,11 @@ function showContextMenu(x, y) {
     labelSpan.textContent = item.label;
     menuItem.appendChild(labelSpan);
 
-    menuItem.addEventListener('click', () => {
-      item.action();
+    menuItem.addEventListener('click', async () => { // Make listener async
+      await item.action(); // Await the action
+      selectedTabs.clear();
       closeContextMenu();
+      requestRenderBrowserTabs();
     });
     menu.appendChild(menuItem);
   });
