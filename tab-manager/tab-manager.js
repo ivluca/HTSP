@@ -244,6 +244,16 @@ function createTabItem(tab, displayTitle) {
       chrome.windows.update(tab.windowId, { focused: true });
     }
   });
+
+  tabItem.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!selectedTabs.has(tab.id)) {
+      selectedTabs.clear();
+      selectedTabs.add(tab.id);
+      renderBrowserTabs();
+    }
+    showContextMenu(e.pageX, e.pageY);
+  });
   
   const mainPart = document.createElement('div');
   mainPart.classList.add('browser-tab-item-main');
@@ -371,4 +381,83 @@ function showGroupDialog(tabIds) {
   dialog.appendChild(dialogContent);
   document.body.appendChild(dialog);
   nameInput.focus();
+}
+
+function showContextMenu(x, y) {
+  closeContextMenu(); // Close any existing menu
+
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  const actions = [
+    { label: 'Group', icon: 'folderOpen', action: () => showGroupDialog(Array.from(selectedTabs)) },
+    { label: 'Ungroup', icon: 'ungroup', action: async () => {
+        const selectedTabIdsArray = Array.from(selectedTabs);
+        const tabsInfo = await Promise.all(selectedTabIdsArray.map(tabId => chrome.tabs.get(tabId)));
+        const groupedSelectedTabIds = tabsInfo.filter(tab => tab.groupId !== -1).map(tab => tab.id);
+        if (groupedSelectedTabIds.length > 0) {
+          await chrome.tabs.ungroup(groupedSelectedTabIds);
+          selectedTabs.clear();
+          requestRenderBrowserTabs();
+        }
+      }
+    },
+    { label: 'Pin/Unpin', icon: 'pin', action: async () => {
+        for (const tabId of selectedTabs) {
+          const tab = await chrome.tabs.get(tabId);
+          await chrome.tabs.update(tabId, { pinned: !tab.pinned });
+        }
+        requestRenderBrowserTabs();
+      }
+    },
+    { label: 'Reload', icon: 'reload', action: async () => {
+        for (const tabId of selectedTabs) {
+          await chrome.tabs.reload(tabId);
+        }
+      }
+    },
+    { label: 'Close', icon: 'close', action: async () => {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
+        if (tabsToDelete.length > 0) {
+          await chrome.tabs.remove(tabsToDelete);
+          selectedTabs.clear();
+          requestRenderBrowserTabs();
+        }
+      }
+    }
+  ];
+
+  actions.forEach(item => {
+    const menuItem = document.createElement('div');
+    menuItem.className = 'context-menu-item';
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'context-menu-icon';
+    iconSpan.innerHTML = icons[item.icon];
+    menuItem.appendChild(iconSpan);
+
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = item.label;
+    menuItem.appendChild(labelSpan);
+
+    menuItem.addEventListener('click', () => {
+      item.action();
+      closeContextMenu();
+    });
+    menu.appendChild(menuItem);
+  });
+
+  document.body.appendChild(menu);
+  document.addEventListener('click', closeContextMenu);
+}
+
+function closeContextMenu() {
+  const existingMenu = document.querySelector('.context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+  document.removeEventListener('click', closeContextMenu);
 }
