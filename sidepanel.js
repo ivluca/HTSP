@@ -92,10 +92,10 @@ function setupEventListeners() {
 
   allTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.target)));
 
-  tabManagerContainer.addEventListener('click', (e) => {
+  tabManagerContainer.addEventListener('click', async (e) => {
     if (!e.target.closest('.browser-tab-item')) {
       selectedTabs.clear();
-      renderBrowserTabs();
+      await renderBrowserTabs();
     }
   });
 
@@ -119,9 +119,9 @@ function setupEventListeners() {
 
   // Trackpad scrolling for tabs
   tabsContainer.addEventListener('wheel', (e) => {
-    if (e.deltaY === 0) return;
+    if (e.deltaY === 0 && e.deltaX === 0) return;
     e.preventDefault();
-    tabsContainer.scrollLeft += e.deltaY;
+    tabsContainer.scrollLeft += e.deltaX || e.deltaY;
   });
 }
 
