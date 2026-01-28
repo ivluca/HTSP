@@ -58,6 +58,19 @@ body {
   flex-grow: 0; /* No need for flex-grow if height is explicit */
   flex-shrink: 0; /* No need for flex-shrink if height is explicit */
 }
+#window-groups-container::-webkit-scrollbar {
+  width: 8px;
+}
+#window-groups-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+#window-groups-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+#window-groups-container:hover::-webkit-scrollbar-thumb {
+  background: #555;
+}
 .browser-tab-item {
   display: flex;
   flex-direction: column;
