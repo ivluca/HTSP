@@ -283,25 +283,6 @@ function createTabItem(tab, displayTitle) {
   const actions = document.createElement('div');
   actions.classList.add('browser-tab-actions');
 
-  const pinBtn = createActionButton('pin', tab.pinned, () => {
-    chrome.tabs.update(tab.id, { pinned: !tab.pinned }, requestRenderBrowserTabs);
-  });
-  const eyeBtn = createActionButton('eye', hiddenTabs.has(tab.id), () => {
-    if (hiddenTabs.has(tab.id)) {
-      hiddenTabs.delete(tab.id);
-    } else {
-      hiddenTabs.add(tab.id);
-    }
-    requestRenderBrowserTabs();
-  });
-  const reloadBtn = createActionButton('reload', false, () => chrome.tabs.reload(tab.id));
-  const closeBtn = createActionButton('close', false, () => {
-    chrome.tabs.remove(tab.id);
-    selectedTabs.delete(tab.id);
-  });
-
-  actions.append(pinBtn, eyeBtn, reloadBtn, closeBtn);
-
   mainPart.append(clickablePart, actions);
 
   const urlPart = document.createElement('div');
@@ -426,6 +407,17 @@ function showContextMenu(x, y) {
           selectedTabs.clear();
           requestRenderBrowserTabs();
         }
+      }
+    },
+    { label: 'Show/Hide Title', icon: 'eye', action: () => {
+        for (const tabId of selectedTabs) {
+          if (hiddenTabs.has(tabId)) {
+            hiddenTabs.delete(tabId);
+          } else {
+            hiddenTabs.add(tabId);
+          }
+        }
+        requestRenderBrowserTabs();
       }
     }
   ];
