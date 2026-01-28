@@ -149,6 +149,15 @@ body {
 .color-red { background-color: #D6966B; }
 .color-yellow { background-color: #DEC981; }
 
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  z-index: 1000;
+}
 .context-menu {
   position: absolute;
   background-color: var(--bg-color);
@@ -167,6 +176,12 @@ body {
 }
 .context-menu-item:hover {
   background-color: var(--item-hover-bg);
+}
+.context-menu-item.danger {
+  color: #FF0000;
+}
+.context-menu-item.danger .context-menu-icon svg {
+  stroke: #FF0000;
 }
 .context-menu-icon {
   margin-right: 10px;

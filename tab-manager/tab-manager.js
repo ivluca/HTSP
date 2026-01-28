@@ -255,7 +255,7 @@ function createTabItem(tab, displayTitle) {
       selectedTabs.clear();
       selectedTabs.add(tab.id);
     }
-    showContextMenu(e.pageX, e.pageY);
+    showContextMenu(e.clientX, e.clientY);
   });
   
   const mainPart = document.createElement('div');
@@ -370,10 +370,13 @@ function showGroupDialog(tabIds) {
 function showContextMenu(x, y) {
   closeContextMenu(); // Close any existing menu
 
+  const overlay = document.createElement('div');
+  overlay.className = 'context-menu-overlay';
+  overlay.addEventListener('click', closeContextMenu);
+  document.body.appendChild(overlay);
+
   const menu = document.createElement('div');
   menu.className = 'context-menu';
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
 
   const actions = [
     { label: 'Group', icon: 'folderOpen', action: () => showGroupDialog(Array.from(selectedTabs)) },
@@ -399,14 +402,6 @@ function showContextMenu(x, y) {
         }
       }
     },
-    { label: 'Close', icon: 'close', action: async () => {
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
-        if (tabsToDelete.length > 0) {
-          await chrome.tabs.remove(tabsToDelete);
-        }
-      }
-    },
     { label: 'Show/Hide Title', icon: 'eye', action: () => {
         for (const tabId of selectedTabs) {
           if (hiddenTabs.has(tabId)) {
@@ -416,12 +411,23 @@ function showContextMenu(x, y) {
           }
         }
       }
+    },
+    { label: 'Close', icon: 'close', isDanger: true, action: async () => {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tabsToDelete = Array.from(selectedTabs).filter(tabId => tabId !== activeTab.id);
+        if (tabsToDelete.length > 0) {
+          await chrome.tabs.remove(tabsToDelete);
+        }
+      }
     }
   ];
 
   actions.forEach(item => {
     const menuItem = document.createElement('div');
     menuItem.className = 'context-menu-item';
+    if (item.isDanger) {
+      menuItem.classList.add('danger');
+    }
     
     const iconSpan = document.createElement('span');
     iconSpan.className = 'context-menu-icon';
@@ -432,8 +438,8 @@ function showContextMenu(x, y) {
     labelSpan.textContent = item.label;
     menuItem.appendChild(labelSpan);
 
-    menuItem.addEventListener('click', async () => { // Make listener async
-      await item.action(); // Await the action
+    menuItem.addEventListener('click', async () => {
+      await item.action();
       selectedTabs.clear();
       closeContextMenu();
       requestRenderBrowserTabs();
@@ -442,7 +448,23 @@ function showContextMenu(x, y) {
   });
 
   document.body.appendChild(menu);
-  document.addEventListener('click', closeContextMenu);
+
+  const menuHeight = menu.offsetHeight;
+  const menuWidth = menu.offsetWidth;
+  const { innerWidth, innerHeight } = window;
+
+  let top = y;
+  if (y + menuHeight > innerHeight) {
+    top = y - menuHeight;
+  }
+
+  let left = x;
+  if (x + menuWidth > innerWidth) {
+    left = x - menuWidth;
+  }
+
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
 }
 
 function closeContextMenu() {
@@ -450,5 +472,8 @@ function closeContextMenu() {
   if (existingMenu) {
     existingMenu.remove();
   }
-  document.removeEventListener('click', closeContextMenu);
+  const overlay = document.querySelector('.context-menu-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
 }
