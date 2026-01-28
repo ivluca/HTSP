@@ -183,6 +183,13 @@ body {
 .context-menu-item.danger .context-menu-icon svg {
   stroke: #FF0000;
 }
+.context-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.context-menu-item.disabled:hover {
+  background-color: transparent;
+}
 .context-menu-icon {
   margin-right: 10px;
   display: flex;
