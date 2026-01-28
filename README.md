@@ -22,3 +22,18 @@ A full-featured, real-time manager for all open browser tabs.
 2.  Open Chrome and navigate to `chrome://extensions`.
 3.  Enable **Developer mode**.
 4.  Click **Load unpacked** and select the source code directory.
+
+## Usage
+- Open the Chrome Side Panel and select HTSP from the extension list.
+- Switch between ChatGPT, Gemini, and Tab Manager using the provided tabs.
+- Use the Tab Manager to organize, search, and manage your browser tabs efficiently.
+
+## Development
+1. Install dependencies (if any):
+   ```bash
+   npm install
+   ```
+2. Make your changes and reload the extension in Chrome via `chrome://extensions` > **Reload**.
+3. For advanced development, edit the source files and use Chrome's extension debugging tools.
+
+## License

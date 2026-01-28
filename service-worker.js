@@ -4,7 +4,7 @@ function initiate() {
     .catch(console.error);
 
   chrome.runtime.onInstalled.addListener(async function () {
-    const rules = [
+    const rules = /** @type {chrome.declarativeNetRequest.Rule[]} */ ([
       {
         id: 1,
         priority: 1,
@@ -35,7 +35,7 @@ function initiate() {
           ]
         },
         condition: {
-          requestDomains: ["gemini.google.com"],
+          requestDomains: /** @type {string[]} */ (["gemini.google.com"]),
           resourceTypes: ["main_frame", "sub_frame"]
         }
       },
@@ -52,11 +52,11 @@ function initiate() {
           ]
         },
         condition: {
-          requestDomains: ["accounts.google.com"],
+          requestDomains: /** @type {string[]} */ (["accounts.google.com"]),
           resourceTypes: ["main_frame", "sub_frame"]
         }
       }
-    ];
+    ]);
 
     const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
     const existingRuleIds = existingRules.map(rule => rule.id);
@@ -69,7 +69,7 @@ function initiate() {
 }
 
 function sendMessageToSidePanel(message) {
-  chrome.runtime.sendMessage(message).catch(err => {
+  chrome.runtime.sendMessage(message).catch(() => {
     // Ignore errors, the side panel might not be open
   });
 }
@@ -77,7 +77,7 @@ function sendMessageToSidePanel(message) {
 // Comprehensive listeners
 chrome.tabs.onCreated.addListener((tab) => sendMessageToSidePanel({ type: 'TAB_CREATED', tabId: tab.id }));
 chrome.tabs.onRemoved.addListener((tabId) => sendMessageToSidePanel({ type: 'TAB_REMOVED', tabId }));
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'complete' || changeInfo.title || changeInfo.pinned || changeInfo.url) {
     sendMessageToSidePanel({ type: 'TAB_UPDATED', tabId, changeInfo });
   }
