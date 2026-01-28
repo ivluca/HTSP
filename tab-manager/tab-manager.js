@@ -2,6 +2,13 @@ const hiddenTabs = new Set();
 const selectedTabs = new Set();
 const collapsedGroups = new Set();
 
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('.browser-tab-item, .context-menu')) {
+    e.preventDefault();
+    closeContextMenu();
+  }
+});
+
 function setupTabManagerHeader() {
   const tabManagerHeader = document.getElementById('tab-manager-header');
   tabManagerHeader.innerHTML = '';
@@ -210,6 +217,7 @@ function createTabItem(tab, displayTitle) {
 
   tabItem.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!selectedTabs.has(tab.id)) {
       document.querySelectorAll('.browser-tab-item.is-selected').forEach(item => {
         item.classList.remove('is-selected');
@@ -340,11 +348,6 @@ function showGroupDialog(tabIds) {
 async function showContextMenu(x, y) {
   closeContextMenu(); // Close any existing menu
 
-  const overlay = document.createElement('div');
-  overlay.className = 'context-menu-overlay';
-  overlay.addEventListener('click', closeContextMenu);
-  document.body.appendChild(overlay);
-
   const menu = document.createElement('div');
   menu.className = 'context-menu';
 
@@ -441,6 +444,17 @@ async function showContextMenu(x, y) {
 
   menu.style.top = `${top}px`;
   menu.style.left = `${left}px`;
+
+  setTimeout(() => {
+    document.addEventListener('click', clickOutsideHandler, { once: true });
+  }, 0);
+}
+
+function clickOutsideHandler(event) {
+  const menu = document.querySelector('.context-menu');
+  if (menu && !menu.contains(event.target)) {
+    closeContextMenu();
+  }
 }
 
 function closeContextMenu() {
@@ -448,8 +462,5 @@ function closeContextMenu() {
   if (existingMenu) {
     existingMenu.remove();
   }
-  const overlay = document.querySelector('.context-menu-overlay');
-  if (overlay) {
-    overlay.remove();
-  }
+  document.removeEventListener('click', clickOutsideHandler);
 }
