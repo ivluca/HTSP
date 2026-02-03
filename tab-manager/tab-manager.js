@@ -1,6 +1,7 @@
 const hiddenTabs = new Set();
 const selectedTabs = new Set();
 const collapsedGroups = new Set();
+let lastClickedTabId = null;
 
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest('.browser-tab-item, .context-menu')) {
@@ -206,19 +207,35 @@ function createTabItem(tab, displayTitle) {
   
   tabItem.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (e.ctrlKey || e.metaKey) {
-      if (selectedTabs.has(tab.id)) {
-        selectedTabs.delete(tab.id);
-      } else {
-        selectedTabs.add(tab.id);
+    const currentTabId = parseInt(tabItem.dataset.tabId);
+
+    if (e.shiftKey && lastClickedTabId !== null) {
+      const allTabElements = [...document.querySelectorAll('.browser-tab-item')];
+      const lastClickedIndex = allTabElements.findIndex(el => parseInt(el.dataset.tabId) === lastClickedTabId);
+      const currentIndex = allTabElements.findIndex(el => parseInt(el.dataset.tabId) === currentTabId);
+      
+      const [start, end] = [lastClickedIndex, currentIndex].sort((a, b) => a - b);
+      
+      for (let i = start; i <= end; i++) {
+        const tabId = parseInt(allTabElements[i].dataset.tabId);
+        selectedTabs.add(tabId);
       }
-      await renderBrowserTabs();
+    } else if (e.ctrlKey || e.metaKey) {
+      if (selectedTabs.has(currentTabId)) {
+        selectedTabs.delete(currentTabId);
+      } else {
+        selectedTabs.add(currentTabId);
+      }
     } else {
       if (e.target.closest('.action-btn')) return;
       selectedTabs.clear();
-      await chrome.tabs.update(tab.id, { active: true });
+      selectedTabs.add(currentTabId);
+      await chrome.tabs.update(currentTabId, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
     }
+    
+    lastClickedTabId = currentTabId;
+    await renderBrowserTabs();
   });
 
   tabItem.addEventListener('contextmenu', async (e) => {
