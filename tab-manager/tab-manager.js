@@ -315,7 +315,7 @@ function showGroupDialog(tabIds) {
   nameInput.placeholder = 'Group Name';
   form.appendChild(nameInput);
 
-  const colors = ['blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'];
+  const colors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan'];
   const colorContainer = document.createElement('div');
   colorContainer.className = 'color-options';
   
