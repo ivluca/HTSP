@@ -298,7 +298,7 @@ function createTabItem(tab, displayTitle) {
   return tabItem;
 }
 
-function showGroupDialog(tabIds) {
+async function showGroupDialog(tabIds) {
   const dialog = document.createElement('div');
   dialog.className = 'dialog-overlay';
 
@@ -353,7 +353,13 @@ function showGroupDialog(tabIds) {
     const groupName = nameInput.value.trim();
     const selectedColor = document.querySelector('.color-option.selected').dataset.color;
     
-    const newGroupId = await chrome.tabs.group({ tabIds });
+    const firstTab = await chrome.tabs.get(tabIds[0]);
+    const windowId = firstTab.windowId;
+
+    const newGroupId = await chrome.tabs.group({
+      tabIds: tabIds,
+      createProperties: { windowId: windowId }
+    });
     const updateProperties = { title: groupName, color: selectedColor };
     await chrome.tabGroups.update(newGroupId, /** @type {chrome.tabGroups.UpdateProperties} */ (updateProperties));
     
