@@ -20,9 +20,14 @@
   --item-hover-bg: #f1f3f4;
   --active-item-bg: #D2E0F9;
   --active-item-border: #1460BA;
-  --icon-stroke: #5f6368;
+  --icon-stroke: #111111;
   --icon-stroke-hover: #202124;
   --url-text: #5f6368;
+  --context-menu-bg: #ffffff;
+  --context-menu-text: #202124;
+  --context-menu-hover-bg: #f1f3f4;
+  --context-menu-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
+  --context-menu-icon-stroke: #5f6368;
 }
 
 [data-theme="dark"] {
@@ -45,6 +50,11 @@
   --icon-stroke: #9aa0a6;
   --icon-stroke-hover: #e8eaed;
   --url-text: #9aa0a6;
+  --context-menu-bg: #4a4e52;
+  --context-menu-text: #e8eaed;
+  --context-menu-hover-bg: #5f6368;
+  --context-menu-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  --context-menu-icon-stroke: #e8eaed;
 }
 
 body { margin: 0; padding: 0; font-family: "SN Pro", sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; }
@@ -94,3 +104,80 @@ body { margin: 0; padding: 0; font-family: "SN Pro", sans-serif; background-colo
 .dropdown-item { color: var(--text-color); padding: 10px 14px; text-decoration: none; display: block; cursor: pointer; font-size: 12px; }
 .dropdown-item:hover { background-color: var(--dropdown-hover-bg); }
 .show { display: block; }
+
+/* Action Buttons */
+#tab-manager-header .header-actions .action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#tab-manager-header .header-actions .action-btn svg {
+  stroke: #111111;
+}
+[data-theme="dark"] #tab-manager-header .header-actions .action-btn svg {
+  stroke: var(--icon-stroke);
+}
+#tab-manager-header .header-actions .action-btn:hover svg {
+  stroke: var(--icon-stroke-hover);
+}
+#tab-manager-header .header-actions .action-btn.active {
+  background-color: var(--active-item-bg);
+  border-radius: 4px;
+}
+#tab-manager-header .header-actions .action-btn.active svg {
+  stroke: var(--active-tab-text);
+}
+[data-theme="dark"] #tab-manager-header .header-actions .action-btn.active svg {
+  stroke: var(--active-tab-bg);
+}
+
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background-color: var(--context-menu-bg);
+  color: var(--context-menu-text);
+  box-shadow: var(--context-menu-shadow);
+  border-radius: 4px;
+  z-index: 1000;
+  min-width: 160px;
+}
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.context-menu-item:hover {
+  background-color: var(--context-menu-hover-bg);
+}
+.context-menu-icon {
+  margin-right: 10px;
+}
+.context-menu-icon svg {
+  stroke: var(--context-menu-icon-stroke);
+}
+.context-menu-item.danger {
+  color: #f88;
+}
+.context-menu-item.danger:hover {
+  background-color: #f88;
+  color: #fff;
+}
+.context-menu-item.danger:hover .context-menu-icon svg {
+  stroke: #fff;
+}
+.context-menu-item.disabled {
+  color: #999;
+  cursor: default;
+}
+.context-menu-item.disabled:hover {
+  background-color: transparent;
+}
+.context-menu-item.disabled .context-menu-icon svg {
+  stroke: #999;
+}
