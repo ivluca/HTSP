@@ -10,6 +10,43 @@ document.addEventListener('contextmenu', (e) => {
   }
 });
 
+async function mergeAllWindows() {
+  const currentWindow = await chrome.windows.getCurrent();
+  const allWindows = await chrome.windows.getAll({ populate: true });
+  const otherWindows = allWindows.filter(win => win.id !== currentWindow.id);
+
+  for (const win of otherWindows) {
+    const groupMap = new Map();
+    const tabsToMove = [];
+    
+    // First, get all tab groups in the window
+    const tabGroups = await chrome.tabGroups.query({ windowId: win.id });
+    for (const group of tabGroups) {
+      const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+      groupMap.set(group.id, {
+        title: group.title,
+        color: group.color,
+        tabIds: tabsInGroup.map(t => t.id)
+      });
+    }
+
+    // Now, get all tabs to be moved
+    const tabs = await chrome.tabs.query({ windowId: win.id, pinned: false });
+    const tabIdsToMove = tabs.map(t => t.id);
+
+    if (tabIdsToMove.length > 0) {
+      await chrome.tabs.move(tabIdsToMove, { windowId: currentWindow.id, index: -1 });
+
+      // Re-create the groups
+      for (const [groupId, groupInfo] of groupMap.entries()) {
+        const newGroupId = await chrome.tabs.group({ tabIds: groupInfo.tabIds });
+        await chrome.tabGroups.update(newGroupId, { title: groupInfo.title, color: groupInfo.color });
+      }
+    }
+  }
+  requestRenderBrowserTabs();
+}
+
 function setupTabManagerHeader() {
   const tabManagerHeader = document.getElementById('tab-manager-header');
   tabManagerHeader.innerHTML = '';
@@ -20,15 +57,7 @@ function setupTabManagerHeader() {
   const actions = document.createElement('div');
   actions.classList.add('header-actions');
 
-  const mergeBtn = createActionButton('merge', false, async () => {
-    const currentWindow = await chrome.windows.getCurrent();
-    const tabs = await chrome.tabs.query({ windowId: -1, pinned: false });
-    const otherWindowTabs = tabs.filter(tab => tab.windowId !== currentWindow.id);
-    const tabIds = otherWindowTabs.map(t => t.id);
-    if (tabIds.length > 0) {
-      await chrome.tabs.move(tabIds, { windowId: currentWindow.id, index: -1 });
-    }
-  });
+  const mergeBtn = createActionButton('merge', false, mergeAllWindows);
 
   const showLinksBtn = createActionButton('link', showLinks, async () => {
     showLinks = !showLinks;
