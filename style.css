@@ -181,3 +181,10 @@ body { margin: 0; padding: 0; font-family: "SN Pro", sans-serif; background-colo
 .context-menu-item.disabled .context-menu-icon svg {
   stroke: #999;
 }
+
+.loader {
+  text-align: center;
+  padding: 20px;
+  font-size: 14px;
+  color: var(--placeholder-text);
+}
