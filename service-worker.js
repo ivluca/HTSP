@@ -1,72 +1,100 @@
-function initiate() {
-  chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch(console.error);
+// --- Caching and State Management ---
 
-  chrome.runtime.onInstalled.addListener(async function () {
-    const rules = /** @type {chrome.declarativeNetRequest.Rule[]} */ ([
-      {
-        id: 1,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: [
-            { header: "x-frame-options", operation: "remove" },
-            { header: "frame-options", operation: "remove" },
-            { header: "frame-ancestors", operation: "remove" },
-            { header: "content-security-policy", operation: "remove" }
-          ]
-        },
-        condition: {
-          requestDomains: ["chat.openai.com", "chatgpt.com", "openai.com"],
-          resourceTypes: ["main_frame", "sub_frame"]
-        }
-      },
-      {
-        id: 2,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: [
-            { header: "x-frame-options", operation: "remove" },
-            { header: "frame-options", operation: "remove" },
-            { header: "frame-ancestors", operation: "remove" },
-            { header: "content-security-policy", operation: "remove" }
-          ]
-        },
-        condition: {
-          requestDomains: /** @type {string[]} */ (["gemini.google.com"]),
-          resourceTypes: ["main_frame", "sub_frame"]
-        }
-      },
-      {
-        id: 3,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: [
-            { header: "x-frame-options", operation: "remove" },
-            { header: "frame-options", operation: "remove" },
-            { header: "frame-ancestors", operation: "remove" },
-            { header: "content-security-policy", operation: "remove" }
-          ]
-        },
-        condition: {
-          requestDomains: /** @type {string[]} */ (["accounts.google.com"]),
-          resourceTypes: ["main_frame", "sub_frame"]
-        }
-      }
-    ]);
-
-    const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
-    const existingRuleIds = existingRules.map(rule => rule.id);
-
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: existingRuleIds,
-      addRules: rules
-    });
-  });
+async function updateCache() {
+  const queryOptions = { populate: true, windowTypes: ['normal'] };
+  const allWindows = await chrome.windows.getAll(queryOptions);
+  const allTabGroups = await chrome.tabGroups.query({});
+  
+  const cache = {
+    windows: allWindows,
+    tabGroups: allTabGroups,
+    timestamp: Date.now()
+  };
+  
+  await chrome.storage.session.set({ tabCache: cache });
+  return cache;
 }
+
+async function getCachedState() {
+  const result = await chrome.storage.session.get('tabCache');
+  if (result.tabCache) {
+    return result.tabCache;
+  }
+  // If cache is empty, build it for the first time.
+  return await updateCache();
+}
+
+// --- Event Listeners for Cache Updates ---
+
+// Update cache on startup
+chrome.runtime.onStartup.addListener(updateCache);
+
+// Update cache on install
+chrome.runtime.onInstalled.addListener(async (details) => {
+  await updateCache();
+  
+  // Also set up the declarativeNetRequest rules
+  const rules = [
+    {
+      id: 1,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        responseHeaders: [
+          { header: "x-frame-options", operation: "remove" },
+          { header: "frame-options", operation: "remove" },
+          { header: "frame-ancestors", operation: "remove" },
+          { header: "content-security-policy", operation: "remove" }
+        ]
+      },
+      condition: {
+        requestDomains: ["chat.openai.com", "chatgpt.com", "openai.com"],
+        resourceTypes: ["main_frame", "sub_frame"]
+      }
+    },
+    {
+      id: 2,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        responseHeaders: [
+          { header: "x-frame-options", operation: "remove" },
+          { header: "frame-options", operation: "remove" },
+          { header: "frame-ancestors", operation: "remove" },
+          { header: "content-security-policy", operation: "remove" }
+        ]
+      },
+      condition: {
+        requestDomains: ["gemini.google.com"],
+        resourceTypes: ["main_frame", "sub_frame"]
+      }
+    },
+    {
+      id: 3,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        responseHeaders: [
+          { header: "x-frame-options", operation: "remove" },
+          { header: "frame-options", operation: "remove" },
+          { header: "frame-ancestors", operation: "remove" },
+          { header: "content-security-policy", operation: "remove" }
+        ]
+      },
+      condition: {
+        requestDomains: ["accounts.google.com"],
+        resourceTypes: ["main_frame", "sub_frame"]
+      }
+    }
+  ];
+  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+  const existingRuleIds = existingRules.map(rule => rule.id);
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: existingRuleIds,
+    addRules: rules
+  });
+});
+
 
 function sendMessageToSidePanel(message) {
   chrome.runtime.sendMessage(message).catch(() => {
@@ -74,20 +102,43 @@ function sendMessageToSidePanel(message) {
   });
 }
 
-// Comprehensive listeners
-chrome.tabs.onCreated.addListener((tab) => sendMessageToSidePanel({ type: 'TAB_CREATED', tabId: tab.id }));
-chrome.tabs.onRemoved.addListener((tabId) => sendMessageToSidePanel({ type: 'TAB_REMOVED', tabId }));
+const debounce = (func, delay) => {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), delay);
+  };
+};
+
+const debouncedUpdateAndNotify = debounce(async () => {
+  await updateCache();
+  sendMessageToSidePanel({ type: 'CACHE_UPDATED' });
+}, 150);
+
+// --- Comprehensive Listeners ---
+chrome.tabs.onCreated.addListener(() => debouncedUpdateAndNotify());
+chrome.tabs.onRemoved.addListener(() => debouncedUpdateAndNotify());
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === 'complete' || changeInfo.title || changeInfo.pinned || changeInfo.url) {
-    sendMessageToSidePanel({ type: 'TAB_UPDATED', tabId, changeInfo });
+  // Filter out minor updates to avoid excessive refreshes
+  if (changeInfo.status || changeInfo.title || changeInfo.pinned || changeInfo.url || changeInfo.groupId) {
+    debouncedUpdateAndNotify();
   }
 });
-chrome.tabs.onMoved.addListener((tabId, moveInfo) => sendMessageToSidePanel({ type: 'TAB_MOVED', tabId, moveInfo }));
-chrome.tabs.onAttached.addListener((tabId, attachInfo) => sendMessageToSidePanel({ type: 'TAB_ATTACHED', tabId, attachInfo }));
-chrome.tabs.onDetached.addListener((tabId, detachInfo) => sendMessageToSidePanel({ type: 'TAB_DETACHED', tabId, detachInfo }));
-chrome.tabs.onActivated.addListener((activeInfo) => sendMessageToSidePanel({ type: 'TAB_ACTIVATED', activeInfo }));
+chrome.tabs.onMoved.addListener(() => debouncedUpdateAndNotify());
+chrome.tabs.onAttached.addListener(() => debouncedUpdateAndNotify());
+chrome.tabs.onDetached.addListener(() => debouncedUpdateAndNotify());
+chrome.tabs.onActivated.addListener(() => debouncedUpdateAndNotify());
 
-chrome.windows.onCreated.addListener((window) => sendMessageToSidePanel({ type: 'WINDOW_CREATED', windowId: window.id }));
-chrome.windows.onRemoved.addListener((windowId) => sendMessageToSidePanel({ type: 'WINDOW_REMOVED', windowId }));
+chrome.windows.onCreated.addListener(() => debouncedUpdateAndNotify());
+chrome.windows.onRemoved.addListener(() => debouncedUpdateAndNotify());
 
-initiate();
+chrome.tabGroups.onCreated.addListener(() => debouncedUpdateAndNotify());
+chrome.tabGroups.onRemoved.addListener(() => debouncedUpdateAndNotify());
+chrome.tabGroups.onUpdated.addListener(() => debouncedUpdateAndNotify());
+chrome.tabGroups.onMoved.addListener(() => debouncedUpdateAndNotify());
+
+
+// --- Initial Setup ---
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch(console.error);

@@ -17,9 +17,7 @@ async function mergeAllWindows() {
 
   for (const win of otherWindows) {
     const groupMap = new Map();
-    const tabsToMove = [];
     
-    // First, get all tab groups in the window
     const tabGroups = await chrome.tabGroups.query({ windowId: win.id });
     for (const group of tabGroups) {
       const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
@@ -30,21 +28,20 @@ async function mergeAllWindows() {
       });
     }
 
-    // Now, get all tabs to be moved
     const tabs = await chrome.tabs.query({ windowId: win.id, pinned: false });
     const tabIdsToMove = tabs.map(t => t.id);
 
     if (tabIdsToMove.length > 0) {
       await chrome.tabs.move(tabIdsToMove, { windowId: currentWindow.id, index: -1 });
 
-      // Re-create the groups
-      for (const [groupId, groupInfo] of groupMap.entries()) {
+      for (const groupInfo of groupMap.values()) {
         const newGroupId = await chrome.tabs.group({ tabIds: groupInfo.tabIds });
         await chrome.tabGroups.update(newGroupId, { title: groupInfo.title, color: groupInfo.color });
       }
     }
   }
-  requestRenderBrowserTabs();
+  // After merging, request the service worker to update its cache and then re-render
+  chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' });
 }
 
 function setupTabManagerHeader() {
@@ -61,7 +58,8 @@ function setupTabManagerHeader() {
 
   const showLinksBtn = createActionButton('link', showLinks, async () => {
     showLinks = !showLinks;
-    await renderBrowserTabs();
+    document.querySelectorAll('.tab-url').forEach(el => el.classList.toggle('visible', showLinks));
+    document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   });
 
   const groupBtn = createActionButton('folderOpen', false, () => {
@@ -82,11 +80,14 @@ function requestRenderBrowserTabs() {
 }
 
 async function renderBrowserTabs(filter = '') {
+  const container = document.getElementById('window-groups-container');
+  container.innerHTML = '<div class="loader">Loading...</div>';
+
   if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
 
-  const queryOptions = { populate: true, windowTypes: ['normal'] };
-  const allWindows = await chrome.windows.getAll(/** @type {chrome.windows.QueryOptions} */ (queryOptions));
-  const allTabGroups = await chrome.tabGroups.query({});
+  const cachedState = await chrome.storage.session.get('tabCache');
+  const { windows: allWindows, tabGroups: allTabGroups } = cachedState.tabCache || { windows: [], tabGroups: [] };
+
   const storage = await chrome.storage.local.get(['collapsedGroups']);
 
   if (storage.collapsedGroups) {
@@ -99,8 +100,6 @@ async function renderBrowserTabs(filter = '') {
   
   setupTabManagerHeader();
 
-  const fragment = document.createDocumentFragment();
-  
   const allTabs = allWindows.reduce((acc, win) => acc.concat(win.tabs || []), []);
 
   const filteredTabs = allTabs.filter(tab => {
@@ -110,109 +109,116 @@ async function renderBrowserTabs(filter = '') {
            (tab.url && tab.url.toLowerCase().includes(lowerCaseFilter));
   });
 
-  /** @type {HTMLDivElement[]} */
-  const pinnedItems = [];
-  const groupItems = new Map();
-  /** @type {HTMLDivElement[]} */
-  const unpinnedItems = [];
+  container.innerHTML = ''; // Clear loader
 
-  for (const tab of filteredTabs) {
-    const tabItem = createTabItem(tab, tab.title);
-    if (tab.pinned) {
-      pinnedItems.push(tabItem);
-    } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
-      if (!groupItems.has(tab.groupId)) {
-        groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
+  const renderChunk = (chunk) => {
+    const fragment = document.createDocumentFragment();
+    const pinnedItems = [];
+    const groupItems = new Map();
+    const unpinnedItems = [];
+
+    for (const tab of chunk) {
+      const tabItem = createTabItem(tab, tab.title);
+      if (tab.pinned) {
+        pinnedItems.push(tabItem);
+      } else if (tab.groupId !== -1 && groupMap.has(tab.groupId)) {
+        if (!groupItems.has(tab.groupId)) {
+          groupItems.set(tab.groupId, { ...groupMap.get(tab.groupId), tabs: [] });
+        }
+        groupItems.get(tab.groupId).tabs.push(tabItem);
+      } else {
+        unpinnedItems.push(tabItem);
       }
-      groupItems.get(tab.groupId).tabs.push(tabItem);
-    } else {
-      unpinnedItems.push(tabItem);
     }
-  }
 
-  if (pinnedItems.length > 0) {
-    const pinsGroupEl = document.createElement('div');
-    const pinsTitleEl = document.createElement('h3');
-    pinsTitleEl.classList.add('section-title');
-    pinsTitleEl.textContent = `Pins (${pinnedItems.length} tabs)`;
-    pinsGroupEl.appendChild(pinsTitleEl);
-    pinnedItems.forEach(item => pinsGroupEl.appendChild(item));
-    fragment.appendChild(pinsGroupEl);
-  }
-
-  if (groupItems.size > 0) {
-    const groupedTabsEl = document.createElement('div');
-    const groupedTabsTitleEl = document.createElement('h3');
-    groupedTabsTitleEl.classList.add('section-title');
-    groupedTabsTitleEl.textContent = 'Grouped Tabs';
-    groupedTabsEl.appendChild(groupedTabsTitleEl);
-
-    for (const group of groupItems.values()) {
-      const groupHeader = document.createElement('div');
-      groupHeader.className = `tab-group-header color-${group.color}`;
-      
-      const leftContent = document.createElement('div');
-      leftContent.style.display = 'flex';
-      leftContent.style.alignItems = 'center';
-
-      const chevron = document.createElement('span');
-      chevron.classList.add('chevron');
-      const isCollapsed = collapsedGroups.has(group.id);
-      chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
-      leftContent.appendChild(chevron);
-
-      const groupTitle = document.createElement('span');
-      groupTitle.textContent = group.title;
-      leftContent.appendChild(groupTitle);
-      
-      groupHeader.appendChild(leftContent);
-
-      groupHeader.addEventListener('click', async (e) => {
-        if (e.target.closest('.action-btn')) return;
-        const newCollapsedState = !collapsedGroups.has(group.id);
-        if (newCollapsedState) {
-          collapsedGroups.add(group.id);
-        } else {
-          collapsedGroups.delete(group.id);
-        }
-        await chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
-        await chrome.tabGroups.update(group.id, { collapsed: newCollapsedState });
-        await renderBrowserTabs();
-      });
-
-      const ungroupAllBtn = createActionButton('ungroup', false, async () => {
-        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
-        const tabIdsToUngroup = tabsInGroup.map(tab => tab.id);
-        if (tabIdsToUngroup.length > 0) {
-          await chrome.tabs.ungroup(tabIdsToUngroup);
-          requestRenderBrowserTabs();
-        }
-      });
-      groupHeader.appendChild(ungroupAllBtn);
-
-      groupedTabsEl.appendChild(groupHeader);
-      group.tabs.forEach(tabItem => {
-        if (isCollapsed) {
-          tabItem.classList.add('is-collapsed-item');
-        }
-        groupedTabsEl.appendChild(tabItem);
-      });
+    if (pinnedItems.length > 0) {
+      const pinsGroupEl = document.createElement('div');
+      const pinsTitleEl = document.createElement('h3');
+      pinsTitleEl.classList.add('section-section-title');
+      pinsTitleEl.textContent = `Pins (${pinnedItems.length} tabs)`;
+      pinsGroupEl.appendChild(pinsTitleEl);
+      pinnedItems.forEach(item => pinsGroupEl.appendChild(item));
+      fragment.appendChild(pinsGroupEl);
     }
-    fragment.appendChild(groupedTabsEl);
-  }
 
-  if (unpinnedItems.length > 0) {
-    const otherTabsEl = document.createElement('div');
-    const otherTabsTitleEl = document.createElement('h3');
-    otherTabsTitleEl.classList.add('section-title');
-    otherTabsTitleEl.textContent = `Other Tabs (${unpinnedItems.length} tabs)`;
-    otherTabsEl.appendChild(otherTabsTitleEl);
-    unpinnedItems.forEach(item => otherTabsEl.appendChild(item));
-    fragment.appendChild(otherTabsEl);
-  }
+    if (groupItems.size > 0) {
+      const groupedTabsEl = document.createElement('div');
+      const groupedTabsTitleEl = document.createElement('h3');
+      groupedTabsTitleEl.classList.add('section-section-title');
+      groupedTabsTitleEl.textContent = 'Grouped Tabs';
+      groupedTabsEl.appendChild(groupedTabsTitleEl);
 
-  const windowGroupsContainer = document.getElementById('window-groups-container');
-  windowGroupsContainer.replaceChildren(fragment);
+      for (const group of groupItems.values()) {
+        const groupHeader = document.createElement('div');
+        groupHeader.className = `tab-group-header color-${group.color}`;
+        
+        const leftContent = document.createElement('div');
+        leftContent.style.display = 'flex';
+        leftContent.style.alignItems = 'center';
+
+        const chevron = document.createElement('span');
+        chevron.classList.add('chevron');
+        const isCollapsed = collapsedGroups.has(group.id);
+        chevron.innerHTML = isCollapsed ? icons.plus : icons.minus;
+        leftContent.appendChild(chevron);
+
+        const groupTitle = document.createElement('span');
+        groupTitle.textContent = group.title;
+        leftContent.appendChild(groupTitle);
+        
+        groupHeader.appendChild(leftContent);
+
+        groupHeader.addEventListener('click', async (e) => {
+          if (e.target.closest('.action-btn')) return;
+          const newCollapsedState = !collapsedGroups.has(group.id);
+          if (newCollapsedState) {
+            collapsedGroups.add(group.id);
+          } else {
+            collapsedGroups.delete(group.id);
+          }
+          await chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+          await chrome.tabGroups.update(group.id, { collapsed: newCollapsedState });
+          chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after group state change
+        });
+
+        const ungroupAllBtn = createActionButton('ungroup', false, async () => {
+          const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+          const tabIdsToUngroup = tabsInGroup.map(tab => tab.id);
+          if (tabIdsToUngroup.length > 0) {
+            await chrome.tabs.ungroup(tabIdsToUngroup);
+            chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after ungrouping
+          }
+        });
+        groupHeader.appendChild(ungroupAllBtn);
+
+        groupedTabsEl.appendChild(groupHeader);
+        group.tabs.forEach(tabItem => {
+          if (isCollapsed) {
+            tabItem.classList.add('is-collapsed-item');
+          }
+          groupedTabsEl.appendChild(tabItem);
+        });
+      }
+      fragment.appendChild(groupedTabsEl);
+    }
+
+    if (unpinnedItems.length > 0) {
+      const otherTabsEl = document.createElement('div');
+      const otherTabsTitleEl = document.createElement('h3');
+      otherTabsTitleEl.classList.add('section-section-title');
+      otherTabsTitleEl.textContent = `Other Tabs (${unpinnedItems.length} tabs)`;
+      otherTabsEl.appendChild(otherTabsTitleEl);
+      unpinnedItems.forEach(item => otherTabsEl.appendChild(item));
+      fragment.appendChild(otherTabsEl);
+    }
+    container.appendChild(fragment);
+  };
+
+  const chunkSize = 50;
+  for (let i = 0; i < filteredTabs.length; i += chunkSize) {
+    const chunk = filteredTabs.slice(i, i + chunkSize);
+    setTimeout(() => renderChunk(chunk), 0);
+  }
 
   document.querySelector('.action-btn.link').classList.toggle('active', showLinks);
   
@@ -264,7 +270,7 @@ function createTabItem(tab, displayTitle) {
     }
     
     lastClickedTabId = currentTabId;
-    await renderBrowserTabs();
+    chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after selection change
   });
 
   tabItem.addEventListener('contextmenu', async (e) => {
@@ -312,6 +318,7 @@ function createTabItem(tab, displayTitle) {
   const closeBtn = createActionButton('close', false, async () => {
     await chrome.tabs.remove(tab.id);
     selectedTabs.delete(tab.id);
+    chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after closing tab
   });
 
   actions.append(closeBtn);
@@ -393,8 +400,8 @@ async function showGroupDialog(tabIds) {
     await chrome.tabGroups.update(newGroupId, /** @type {chrome.tabGroups.UpdateProperties} */ (updateProperties));
     
     selectedTabs.clear();
+    chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after creating group
     dialog.remove();
-    requestRenderBrowserTabs();
   });
 
   dialogContent.appendChild(form);
@@ -419,6 +426,7 @@ async function showContextMenu(x, y) {
         if (hasGroupedTabs) {
           const groupedSelectedTabIds = tabsInfo.filter(tab => tab.groupId !== -1).map(tab => tab.id);
           await chrome.tabs.ungroup(groupedSelectedTabIds);
+          chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after ungrouping
         }
       }
     },
@@ -427,12 +435,14 @@ async function showContextMenu(x, y) {
           const tab = await chrome.tabs.get(tabId);
           await chrome.tabs.update(tabId, { pinned: !tab.pinned });
         }
+        chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after pinning/unpinning
       }
     },
     { label: 'Reload', icon: 'reload', action: async () => {
         for (const tabId of selectedTabs) {
           await chrome.tabs.reload(tabId);
         }
+        chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after reloading
       }
     },
     { label: 'Show/Hide Title', icon: 'eye', action: async () => {
@@ -443,6 +453,7 @@ async function showContextMenu(x, y) {
             hiddenTabs.add(tabId);
           }
         }
+        chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after showing/hiding title
       }
     },
     { label: 'Close', icon: 'close', isDanger: true, action: async () => {
@@ -450,6 +461,7 @@ async function showContextMenu(x, y) {
         if (tabsToDelete.length > 0) {
           await chrome.tabs.remove(tabsToDelete);
         }
+        chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' }); // Request cache update after closing tabs
       }
     }
   ];
