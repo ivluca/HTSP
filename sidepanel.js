@@ -1,4 +1,4 @@
-let showLinks = true;
+let showLinks = false;
 let renderTimeout;
 let searchTerm = '';
 
