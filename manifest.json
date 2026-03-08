@@ -1,6 +1,6 @@
 {
   "name": "HTSP",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "manifest_version": 3,
   "description": "Help Tools Side Panel",
   "host_permissions": [
@@ -11,14 +11,18 @@
     "https://www.googletagmanager.com/*",
     "*://*.gstatic.com/*",
     "*://accounts.google.com/*",
-    "*://gemini.google.com/*"
+    "*://gemini.google.com/*",
+    "<all_urls>"
   ],
   "permissions": [
     "declarativeNetRequest",
     "sidePanel",
     "tabs",
     "tabGroups",
-    "storage"
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads"
   ],
   "icons": {
     "128": "images/icon.png",

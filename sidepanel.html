@@ -3,11 +3,13 @@
     <title>HTSP</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="tab-manager/tab-manager.css">
+    <link rel="stylesheet" href="media-downloader/media-downloader.css">
   </head>
   <body>
     <div id="header">
       <div class="tabs">
-        <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
+        <div class="tab active" data-target="media-downloader-container">Media Downloader</div>
+        <div class="tab" data-target="tab-manager-container">Tab Manager</div>
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
       </div>
@@ -24,7 +26,52 @@
     </div>
 
     <div class="iframe-container">
-      <div id="tab-manager-container" class="ai-frame">
+      <div id="media-downloader-container" class="ai-frame">
+        <div id="media-downloader-header" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 500;">Media Downloader</h3>
+          <button id="refresh-media-btn" class="action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+          </button>
+        </div>
+        <div id="media-toolbar" class="media-toolbar">
+          <label class="checkbox-container">
+            <input type="checkbox" id="select-all-media" />
+            <span class="checkmark"></span>
+            Select All
+          </label>
+          <div class="toolbar-actions">
+            <select id="media-type-filter" class="styled-select">
+              <option value="all">All Types</option>
+              <option value="image">Images</option>
+              <option value="video" selected>Videos</option>
+            </select>
+            <button id="cancel-downloads-btn" class="action-btn cancel-btn hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
+              Cancel
+            </button>
+            <button id="download-selected-btn" class="action-btn download-selected-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+              Selected
+            </button>
+          </div>
+        </div>
+        <div id="media-list-container">
+          <!-- Media items will be rendered here -->
+        </div>
+        
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal" class="modal hidden">
+          <div class="modal-content">
+            <h4 id="confirm-modal-title">Confirm Download</h4>
+            <p id="confirm-modal-text">Calculating size...</p>
+            <div class="modal-actions">
+              <button id="modal-cancel-btn" class="modal-btn secondary-btn">Cancel</button>
+              <button id="modal-ok-btn" class="modal-btn primary-btn disabled" disabled>OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="tab-manager-container" class="ai-frame hidden">
         <div id="tab-manager-header"></div>
         <label for="search-box"></label>
         <input type="text" id="search-box" placeholder="Search tabs...">
@@ -37,6 +84,7 @@
     </div>
     <script src="sidepanel.js"></script>
     <script src="tab-manager/tab-manager.js"></script>
+    <script src="media-downloader/media-downloader.js"></script>
     <script src="init.js"></script>
   </body>
 </html>
