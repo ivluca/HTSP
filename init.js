@@ -1,4 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
   setupTabManagerHeader();
-  switchTab('media-downloader-container');
+  switchTab('tab-manager-container');
 });

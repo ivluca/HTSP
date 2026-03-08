@@ -8,10 +8,10 @@
   <body>
     <div id="header">
       <div class="tabs">
-        <div class="tab active" data-target="media-downloader-container">Media Downloader</div>
-        <div class="tab" data-target="tab-manager-container">Tab Manager</div>
+        <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
+        <div class="tab" data-target="media-downloader-container">Media Downloader</div>
       </div>
       <div class="dropdown">
         <button id="dropdown-btn" class="dropdown-btn">
@@ -41,9 +41,9 @@
           </label>
           <div class="toolbar-actions">
             <select id="media-type-filter" class="styled-select">
-              <option value="all">All Types</option>
+              <option value="all" selected>All Types</option>
               <option value="image">Images</option>
-              <option value="video" selected>Videos</option>
+              <option value="video">Videos</option>
             </select>
             <button id="cancel-downloads-btn" class="action-btn cancel-btn hidden">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
