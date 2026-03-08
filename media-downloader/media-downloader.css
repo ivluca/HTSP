@@ -103,16 +103,17 @@
   align-items: center;
 }
 
-.media-type {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 4px;
-  border-radius: 3px;
-  background-color: var(--active-tab-bg);
-  color: var(--active-tab-text);
-  text-transform: uppercase;
-  min-width: 40px;
-  text-align: center;
+
+.media-type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--section-title-text, #5f6368);
+  flex-shrink: 0;
+}
+
+.media-type-icon svg {
+  stroke: currentColor;
 }
 
 .media-size {
