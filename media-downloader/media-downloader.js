@@ -256,7 +256,7 @@ function renderMediaItems(items) {
   // reset select all checkbox
   if (selectAllCb) selectAllCb.checked = false;
 
-  const currentFilter = filterSelect ? filterSelect.value : 'video';
+  const currentFilter = filterSelect ? filterSelect.value : 'all';
   
   const filteredItems = items.filter(item => {
     if (currentFilter === 'all') return true;
