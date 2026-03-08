@@ -154,7 +154,16 @@ async function fetchAndRenderMedia() {
     const injectionResults = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: extractMediaLinks
+    }).catch(err => {
+      console.warn("Script injection blocked or failed:", err);
+      return null;
     });
+
+    if (!injectionResults || !injectionResults[0] || !injectionResults[0].result) {
+      allDetectedMedia = [];
+      showNoMediaMessage("Cannot extract media from this page. Content Script execution might be blocked.");
+      return;
+    }
 
     const mediaItems = injectionResults[0].result;
     
