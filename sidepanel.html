@@ -12,6 +12,7 @@
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
         <div class="tab" data-target="media-downloader-container">Media Downloader</div>
+        <div class="tab" data-target="page-capture-container">Page Capture</div>
       </div>
       <div class="dropdown">
         <button id="dropdown-btn" class="dropdown-btn">
@@ -79,12 +80,34 @@
           <!-- Window groups will be rendered here by JS -->
         </div>
       </div>
+      <div id="page-capture-container" class="ai-frame hidden">
+        <div id="page-capture-header" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 500;">Page Capture</h3>
+        </div>
+        <div class="capture-toolbar" style="padding: 10px; display: flex; justify-content: center; border-bottom: 1px solid var(--border-color);">
+          <button id="capture-btn" class="action-btn" style="width: 100%; justify-content: center; padding: 8px; border-radius: 4px; background: var(--bg-hover);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /><circle cx="12" cy="12" r="3" /></svg>
+            Capture Full Page
+          </button>
+        </div>
+        <div id="capture-loading" class="hidden" style="padding: 20px; text-align: center; color: var(--text-color);">
+          <p>Capturing page, please wait...</p>
+        </div>
+        <div id="capture-preview-container" class="hidden" style="padding: 10px; display: flex; flex-direction: column; align-items: center; overflow-y: auto;">
+          <img id="capture-preview-img" style="max-width: 100%; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 10px;" />
+          <button id="download-capture-btn" class="action-btn download-selected-btn" style="width: 100%; justify-content: center; padding: 8px; border-radius: 4px; background: var(--bg-hover);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+            Download Image
+          </button>
+        </div>
+      </div>
       <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
     </div>
     <script src="sidepanel.js"></script>
     <script src="tab-manager/tab-manager.js"></script>
     <script src="media-downloader/media-downloader.js"></script>
+    <script src="page-capture/page-capture.js"></script>
     <script src="init.js"></script>
   </body>
 </html>
