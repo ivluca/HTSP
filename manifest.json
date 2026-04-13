@@ -22,7 +22,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "debugger"
   ],
   "icons": {
     "128": "images/icon.png",
