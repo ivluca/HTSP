@@ -1,12 +1,18 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const captureBtn = document.getElementById('capture-btn');
-    const loadingState = document.getElementById('capture-loading');
-    const previewContainer = document.getElementById('capture-preview-container');
-    const previewImg = document.getElementById('capture-preview-img');
-    const downloadBtn = document.getElementById('download-capture-btn');
-    let capturedDataUrl = null;
+import re
 
-        const captureFrameBtn = document.getElementById('capture-frame-btn');
+with open('page-capture/page-capture.js', 'r') as f:
+    content = f.read()
+
+# We want to replace the `captureBtn.addEventListener('click', async () => { ... });`
+# with a new `async function performCapture(captureMode)` and attach it to both buttons.
+
+start_idx = content.find("if (!captureBtn) return; // Prevent errors if not in DOM")
+end_idx = content.find("downloadBtn.addEventListener('click', () => {")
+
+before = content[:start_idx]
+after = content[end_idx:]
+
+new_logic = """    const captureFrameBtn = document.getElementById('capture-frame-btn');
     if (!captureBtn) return;
 
     captureBtn.addEventListener('click', () => performCapture('full'));
@@ -21,15 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let targetType = captureMode;
-        
-        captureBtn.style.display = 'none';
-        if (captureFrameBtn) captureFrameBtn.style.display = 'none';
-        previewContainer.classList.add('hidden');
-        
         if (captureMode === 'frame') {
-            loadingState.innerHTML = '<p>Select a frame on the page...</p>';
-            loadingState.classList.remove('hidden');
-
             try {
                 await chrome.scripting.insertCSS({
                     target: { tabId: tab.id },
@@ -80,18 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            if (!selectionResult || !selectionResult[0] || !selectionResult[0].result) {
-                // Aborted or error
-                captureBtn.style.display = 'flex';
-                if (captureFrameBtn) captureFrameBtn.style.display = 'flex';
-                loadingState.classList.add('hidden');
-                return;
-            }
+            if (!selectionResult || !selectionResult[0] || !selectionResult[0].result) return;
             targetType = selectionResult[0].result.type;
         }
 
-        loadingState.innerHTML = '<p>Capturing page, please wait...</p>';
+        captureBtn.style.display = 'none';
+        if (captureFrameBtn) captureFrameBtn.style.display = 'none';
         loadingState.classList.remove('hidden');
+        previewContainer.classList.add('hidden');
 
         try {
             const sizeInfo = await chrome.scripting.executeScript({
@@ -175,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await new Promise(r => setTimeout(r, 600));
 
             let screenshotParams = { format: "png", fromSurface: true };
-            let clipRect = null;
             if (targetType === 'frame') {
                 const clipResult = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
@@ -183,23 +176,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         const el = document.querySelector('[data-htsp-target]');
                         if (!el) return null;
                         const rect = el.getBoundingClientRect();
-                        return { 
-                            x: Math.round(rect.left), 
-                            y: Math.round(rect.top), 
-                            width: Math.round(rect.width), 
-                            height: Math.round(rect.height) 
-                        };
+                        return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
                     }
                 });
                 if (clipResult && clipResult[0] && clipResult[0].result) {
-                    clipRect = clipResult[0].result;
+                    const r = clipResult[0].result;
+                    if (r.width > 0 && r.height > 0) {
+                        screenshotParams.clip = { x: r.x, y: r.y, width: r.width, height: r.height, scale: 1 };
+                        screenshotParams.captureBeyondViewport = true;
+                    }
                 }
             }
 
             const screenshotResult = await chrome.debugger.sendCommand({ tabId: tab.id }, "Page.captureScreenshot", screenshotParams);
 
             await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.clearDeviceMetricsOverride", {});
-            try { await chrome.debugger.detach({ tabId: tab.id }); } catch(e) {}
+            await chrome.debugger.detach({ tabId: tab.id });
 
             try {
                 await chrome.scripting.executeScript({
@@ -224,30 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {}
 
             if (screenshotResult && screenshotResult.data) {
-                let finalDataUrl = "data:image/png;base64," + screenshotResult.data;
-                
-                // Crop the frame robustly via HTML Canvas to avoid Chromium CDP scaling/stretching bugs
-                if (targetType === 'frame' && clipRect && clipRect.width > 0 && clipRect.height > 0) {
-                    finalDataUrl = await new Promise((resolve, reject) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            // devicePixelRatio scaling is inherently present in the Full Page capture output size
-                            canvas.width = clipRect.width * devicePixelRatio;
-                            canvas.height = clipRect.height * devicePixelRatio;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 
-                                clipRect.x * devicePixelRatio, clipRect.y * devicePixelRatio, canvas.width, canvas.height,
-                                0, 0, canvas.width, canvas.height
-                            );
-                            resolve(canvas.toDataURL('image/png'));
-                        };
-                        img.onerror = () => reject(new Error("Failed to load image for cropping"));
-                        img.src = finalDataUrl;
-                    });
-                }
-
-                capturedDataUrl = finalDataUrl;
+                capturedDataUrl = "data:image/png;base64," + screenshotResult.data;
                 previewImg.src = capturedDataUrl;
                 
                 loadingState.classList.add('hidden');
@@ -263,18 +232,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Capture error:', error);
-            
-            let errMsg = error.message || error;
-            if (errMsg.includes('Another debugger is already attached')) {
-                errMsg = 'Please close Developer Tools (F12) on this page to capture it.';
-            }
-            alert('Failed to capture page: ' + errMsg);
-            
+            alert('Failed to capture page: ' + (error.message || error));
             loadingState.classList.add('hidden');
             captureBtn.style.display = 'flex';
             if (captureFrameBtn) captureFrameBtn.style.display = 'flex';
             
-            try { await chrome.debugger.detach({ tabId: tab.id }); } catch (e) {}
+            chrome.debugger.detach({ tabId: tab.id }, () => {});
             
             try {
                 chrome.scripting.executeScript({
@@ -294,51 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    downloadBtn.addEventListener('click', () => {
-        if (!capturedDataUrl) return;
+    """
 
-        chrome.downloads.download({
-            url: capturedDataUrl,
-            filename: `page_capture_${new Date().getTime()}.png`,
-            saveAs: true
-        });
-    });
+with open('page-capture/page-capture.js', 'w') as f:
+    f.write(before + new_logic + after)
 
-    const copyBtn = document.getElementById('copy-capture-btn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', async () => {
-            if (!capturedDataUrl) return;
-            const originalHtml = copyBtn.innerHTML;
-            copyBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                Copied!
-            `;
-            try {
-                // Fetch blob from base64 data url
-                const response = await fetch(capturedDataUrl);
-                const blob = await response.blob();
-                await navigator.clipboard.write([
-                    new ClipboardItem({ [blob.type]: blob })
-                ]);
-            } catch (err) {
-                console.error("Failed to copy image: ", err);
-                alert("Failed to copy image to clipboard");
-            }
-            setTimeout(() => {
-                copyBtn.innerHTML = originalHtml;
-            }, 2000);
-        });
-    }
-    if (previewImg) {
-        previewImg.addEventListener('click', () => {
-            if (!capturedDataUrl) return;
-            chrome.tabs.create({ url: chrome.runtime.getURL('page-capture/preview.html') });
-        });
-    }
-    // Listen for requests from the preview tab
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type === 'GET_CAPTURE_PREVIEW') {
-            sendResponse({ dataUrl: capturedDataUrl });
-        }
-    });
-});
