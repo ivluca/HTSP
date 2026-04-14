@@ -11,11 +11,6 @@ Extracts and downloads media assets from the active tab.
 - **Bulk Download:** Uses the `chrome.downloads` API to process bulk downloads concurrently. Files are routed into timestamp-generated subdirectories (e.g., `MediaDownloader_YYYYMMDD_HHMMSS`).
 - **Download Management:** Lifecycle controls including pause, resume, and cancel for active bulk download queues.
 - **Size Estimation:** Dispatches concurrent `HEAD` requests to compute total `Content-Length` across selected assets before initializing the download sequence.
-### Page Capture
-Captures full-page screenshots of modern, dynamic web pages.
-- **Dynamic Content Support:** Programmatically simulates smooth scrolling to force lazy-loaded and virtualized lists (like Gemini and ChatGPT chats) to render completely before taking the shot.
-- **Viewport Emulation:** Adjusts device metrics to wrap the entire page layout natively without graphical clipping.
-- **Preview & Management:** Offers zoomed preview, and allows direct saving or copying the resulting image to the clipboard.
 
 ### Tab Manager
 Tooling for managing open browser tabs from the Side Panel.
