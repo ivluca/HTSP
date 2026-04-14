@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     captureBtn.addEventListener('click', async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         
-        if (!tab || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+        if (!tab || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('about:') || tab.url.startsWith('edge://')) {
             alert('Cannot capture this page. Try a normal web page.');
             return;
         }
@@ -79,6 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (s.scrollHeight > maxH) maxH = s.scrollHeight;
                         if (s.scrollWidth > maxW) maxW = s.scrollWidth;
                     }
+
+                    // CRUCIAL: Scroll back to the absolute TOP before returning!
+                    // This forces virtualized lists to anchor from 0 when we expand the viewport,
+                    // preventing top items from being clipped if the chat is very long. 
+                    window.scrollTo(0, 0);
+                    for (let s of scrollers) {
+                        s.scrollTop = 0;
+                    }
+                    await delays(500);
 
                     return {
                         width: maxW,
@@ -209,5 +218,43 @@ document.addEventListener('DOMContentLoaded', () => {
             filename: `page_capture_${new Date().getTime()}.png`,
             saveAs: true
         });
+    });
+
+    const copyBtn = document.getElementById('copy-capture-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            if (!capturedDataUrl) return;
+            const originalHtml = copyBtn.innerHTML;
+            copyBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                Copied!
+            `;
+            try {
+                // Fetch blob from base64 data url
+                const response = await fetch(capturedDataUrl);
+                const blob = await response.blob();
+                await navigator.clipboard.write([
+                    new ClipboardItem({ [blob.type]: blob })
+                ]);
+            } catch (err) {
+                console.error("Failed to copy image: ", err);
+                alert("Failed to copy image to clipboard");
+            }
+            setTimeout(() => {
+                copyBtn.innerHTML = originalHtml;
+            }, 2000);
+        });
+    }
+    if (previewImg) {
+        previewImg.addEventListener('click', () => {
+            if (!capturedDataUrl) return;
+            chrome.tabs.create({ url: chrome.runtime.getURL('page-capture/preview.html') });
+        });
+    }
+    // Listen for requests from the preview tab
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'GET_CAPTURE_PREVIEW') {
+            sendResponse({ dataUrl: capturedDataUrl });
+        }
     });
 });
