@@ -220,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             height = Math.min(height, 16000);
 
             await chrome.debugger.attach({ tabId: tab.id }, "1.3");
+            try { await chrome.debugger.sendCommand({ tabId: tab.id }, "Overlay.setShowViewportSizeOnResize", { show: false }); } catch(e) {}
 
             // Freeze visibility of fixed elements before resize to prevent responsive media queries from hiding them (like Footers)
             try {
