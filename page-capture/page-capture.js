@@ -220,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
             height = Math.min(height, 16000);
 
             await chrome.debugger.attach({ tabId: tab.id }, "1.3");
-            try { await chrome.debugger.sendCommand({ tabId: tab.id }, "Overlay.setShowViewportSizeOnResize", { show: false }); } catch(e) {}
 
             // Freeze visibility of fixed elements before resize to prevent responsive media queries from hiding them (like Footers)
             try {
@@ -256,6 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 mobile: false
             });
 
+            // Disable Chromium native viewport size tooltip after Emulation is configured
+            try { await chrome.debugger.sendCommand({ tabId: tab.id }, "Overlay.disable", {}); } catch(e) {}
+            try { await chrome.debugger.sendCommand({ tabId: tab.id }, "Overlay.setShowViewportSizeOnResize", { show: false }); } catch(e) {}
+
             // Hide scrollbars before capture
             try {
                 await chrome.scripting.insertCSS({
@@ -276,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (e) {}
 
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, 1200));
 
             let screenshotParams = { format: "png", fromSurface: true };
             let clipRect = null;
