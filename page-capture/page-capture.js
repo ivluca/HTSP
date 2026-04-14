@@ -110,47 +110,30 @@ document.addEventListener('DOMContentLoaded', () => {
             height = Math.min(height, 16000);
 
             // 2. Attach Debugger
-            await new Promise((resolve, reject) => {
-                chrome.debugger.attach({ tabId: tab.id }, "1.3", () => {
-                    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
-                    resolve();
-                });
-            });
+            await chrome.debugger.attach({ tabId: tab.id }, "1.3");
 
             // 3. Force viewport to match full content size
-            await new Promise((resolve, reject) => {
-                chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.setDeviceMetricsOverride", {
-                    width: width,
-                    height: height,
-                    deviceScaleFactor: devicePixelRatio,
-                    mobile: false
-                }, (result) => {
-                    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
-                    resolve(result);
-                });
+            await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.setDeviceMetricsOverride", {
+                width: width,
+                height: height,
+                deviceScaleFactor: devicePixelRatio,
+                mobile: false
             });
 
             // Wait a moment for the DOM to reflow/expand to the new giant viewport
             await new Promise(r => setTimeout(r, 600));
 
             // 4. Capture the screenshot (now that the whole page fits in the viewport)
-            const screenshotResult = await new Promise((resolve, reject) => {
-                chrome.debugger.sendCommand({ tabId: tab.id }, "Page.captureScreenshot", {
-                    format: "png",
-                    fromSurface: true
-                }, (result) => {
-                    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
-                    resolve(result);
-                });
+            const screenshotResult = await chrome.debugger.sendCommand({ tabId: tab.id }, "Page.captureScreenshot", {
+                format: "png",
+                fromSurface: true
             });
 
             // 5. Restore viewport
-            await new Promise((resolve) => {
-                chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.clearDeviceMetricsOverride", {}, resolve);
-            });
+            await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.clearDeviceMetricsOverride", {});
 
             // Detach Debugger immediately after success
-            await new Promise((resolve) => chrome.debugger.detach({ tabId: tab.id }, resolve));
+            await chrome.debugger.detach({ tabId: tab.id });
 
             // Restoring viewport scroll position so user isn't stuck at the bottom
             try {
