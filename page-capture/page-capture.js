@@ -165,6 +165,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             await chrome.debugger.attach({ tabId: tab.id }, "1.3");
 
+            // Freeze visibility of fixed elements before resize to prevent responsive media queries from hiding them (like Footers)
+            try {
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false);
+                        let node;
+                        while ((node = walker.nextNode())) {
+                            const style = window.getComputedStyle(node);
+                            if (style.position === 'fixed' || style.position === 'sticky' || node.tagName === 'FOOTER' || node.id.toLowerCase().includes('footer') || node.className.toLowerCase().includes('footer')) {
+                                node.style.setProperty('display', style.display, 'important');
+                                node.style.setProperty('opacity', style.opacity, 'important');
+                                node.style.setProperty('visibility', style.visibility, 'important');
+                                const childWalker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, null, false);
+                                let child;
+                                while ((child = childWalker.nextNode())) {
+                                    const cStyle = window.getComputedStyle(child);
+                                    child.style.setProperty('display', cStyle.display, 'important');
+                                    child.style.setProperty('opacity', cStyle.opacity, 'important');
+                                    child.style.setProperty('visibility', cStyle.visibility, 'important');
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (e) {}
+
             await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.setDeviceMetricsOverride", {
                 width: width,
                 height: height,
@@ -177,6 +204,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 await chrome.scripting.insertCSS({
                     target: { tabId: tab.id, allFrames: true },
                     css: '::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; } * { scrollbar-width: none !important; }'
+                });
+            } catch (e) {}
+
+            // Force reflow/repaint compositor to ensure fixed elements aren't dropped by Chromium
+            try {
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                        window.dispatchEvent(new Event('resize'));
+                        window.scrollBy(0, 1);
+                        setTimeout(() => window.scrollBy(0, -1), 50);
+                    }
                 });
             } catch (e) {}
 
