@@ -172,6 +172,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 mobile: false
             });
 
+            // Hide scrollbars before capture
+            try {
+                await chrome.scripting.insertCSS({
+                    target: { tabId: tab.id, allFrames: true },
+                    css: '::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; } * { scrollbar-width: none !important; }'
+                });
+            } catch (e) {}
+
             await new Promise(r => setTimeout(r, 600));
 
             let screenshotParams = { format: "png", fromSurface: true };
@@ -200,6 +208,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.clearDeviceMetricsOverride", {});
             try { await chrome.debugger.detach({ tabId: tab.id }); } catch(e) {}
+            
+            // Restore scrollbars
+            try {
+                await chrome.scripting.removeCSS({
+                    target: { tabId: tab.id, allFrames: true },
+                    css: '::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; } * { scrollbar-width: none !important; }'
+                });
+            } catch (e) {}
 
             try {
                 await chrome.scripting.executeScript({
