@@ -20,6 +20,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        let abortResolver = null;
+        let activeTabId = tab.id;
+        window.htsp_abortCapture = false;
+        const cancelBtn = document.getElementById('cancel-capture-btn');
+        const loadingText = document.getElementById('capture-loading-text');
+
+        const abortFn = () => {
+            window.htsp_abortCapture = true;
+            try { chrome.scripting.executeScript({ target: {tabId: activeTabId}, func: () => window.dispatchEvent(new Event('htsp-abort-selection')) }); } catch(e) {}
+            if (abortResolver) abortResolver({ aborted: true });
+        };
+        if (cancelBtn) {
+            cancelBtn.onclick = abortFn;
+        }
+
         let targetType = captureMode;
         
         captureBtn.style.display = 'none';
@@ -27,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.classList.add('hidden');
         
         if (captureMode === 'frame') {
-            loadingState.innerHTML = '<p>Select a frame on the page...</p>';
+            loadingText.innerText = 'Select a frame on the page (or press Esc to cancel)...';
             loadingState.classList.remove('hidden');
 
             try {
@@ -37,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (e) {}
 
-            const selectionResult = await chrome.scripting.executeScript({
+            const extSelectionPromise = chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
                     return new Promise((resolve) => {
@@ -56,13 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             overlay.style.height = rect.height + 'px';
                         };
 
+                        const cleanup = () => {
+                            document.removeEventListener('mousemove', moveHandler, true);
+                            document.removeEventListener('click', clickHandler, true);
+                            document.removeEventListener('keydown', keyHandler, true);
+                            window.removeEventListener('htsp-abort-selection', abortHandler);
+                            if (overlay) overlay.remove();
+                        };
+
                         const clickHandler = (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            
-                            document.removeEventListener('mousemove', moveHandler, true);
-                            document.removeEventListener('click', clickHandler, true);
-                            overlay.remove();
+                            cleanup();
 
                             const isFullPage = (currentTarget === document.body || currentTarget === document.documentElement);
                             if (isFullPage) {
@@ -74,29 +94,57 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
 
+                        const keyHandler = (e) => {
+                            if (e.key === 'Escape') {
+                                e.preventDefault();
+                                cleanup();
+                                resolve({ type: 'cancel' });
+                            }
+                        };
+                        
+                        const abortHandler = () => {
+                            cleanup();
+                            resolve({ type: 'cancel' });
+                        };
+
                         document.addEventListener('mousemove', moveHandler, true);
                         document.addEventListener('click', clickHandler, true);
+                        document.addEventListener('keydown', keyHandler, true);
+                        window.addEventListener('htsp-abort-selection', abortHandler);
                     });
                 }
             });
 
-            if (!selectionResult || !selectionResult[0] || !selectionResult[0].result) {
+            const abortPromise = new Promise(r => abortResolver = r);
+            const selectionResult = await Promise.race([extSelectionPromise, abortPromise]);
+
+            if (window.htsp_abortCapture || !selectionResult || (selectionResult[0] && selectionResult[0].result && selectionResult[0].result.type === 'cancel') || selectionResult.aborted) {
                 // Aborted or error
                 captureBtn.style.display = 'flex';
                 if (captureFrameBtn) captureFrameBtn.style.display = 'flex';
                 loadingState.classList.add('hidden');
+                
+                // Cleanup potentially injected elements/css
+                try {
+                    await chrome.scripting.executeScript({ target: {tabId: tab.id}, func: () => {
+                        document.querySelectorAll('.htsp-highlight-overlay').forEach(el => el.remove());
+                    }});
+                } catch(e) {}
+                
                 return;
             }
             targetType = selectionResult[0].result.type;
         }
 
-        loadingState.innerHTML = '<p>Capturing page, please wait...</p>';
+        loadingText.innerText = 'Capturing page, please wait...';
         loadingState.classList.remove('hidden');
 
         try {
-            const sizeInfo = await chrome.scripting.executeScript({
+            if (window.htsp_abortCapture) throw new Error("Aborted");
+            const sizeInfoAsync = chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: async () => {
+                    window.htsp_page_abort = false;
                     const delays = (ms) => new Promise(res => setTimeout(res, ms));
                     
                     let scrollers = [];
@@ -115,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const origWindowY = window.scrollY;
                     
                     let lastScroll = -1;
-                    while (window.scrollY < Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight && window.scrollY > lastScroll) {
+                    while (!window.htsp_page_abort && window.scrollY < Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight && window.scrollY > lastScroll) {
                         lastScroll = window.scrollY;
                         window.scrollBy(0, 800);
                         await delays(200);
@@ -123,12 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.scrollTo(0, Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
                     
                     for (let i = 0; i < scrollers.length; i++) {
+                        if (window.htsp_page_abort) break;
                         let s = scrollers[i];
                         s.dataset.htspId = i.toString();
                         window.__htsp_scrollers.push({ id: i, top: s.scrollTop });
                         
                         let sLast = -1;
-                        while (s.scrollTop < s.scrollHeight - s.clientHeight && s.scrollTop > sLast) {
+                        while (!window.htsp_page_abort && s.scrollTop < s.scrollHeight - s.clientHeight && s.scrollTop > sLast) {
                             sLast = s.scrollTop;
                             s.scrollTop += 800;
                             await delays(150);
@@ -136,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         s.scrollTop = s.scrollHeight;
                     }
 
-                    await delays(800);
+                    await delays(500);
 
                     let maxH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
                     let maxW = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
@@ -156,9 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     await delays(500);
 
-                    return { width: maxW, height: maxH, devicePixelRatio: window.devicePixelRatio || 1, origWindowY: origWindowY };
+                    return { width: maxW, height: maxH, devicePixelRatio: window.devicePixelRatio || 1, origWindowY: origWindowY, aborted: window.htsp_page_abort === true };
                 }
             });
+
+            const abortProm = new Promise(r => abortResolver = r);
+            const sizeInfo = await Promise.race([sizeInfoAsync, abortProm]);
+
+            if (window.htsp_abortCapture || !sizeInfo || sizeInfo.aborted || (sizeInfo[0] && sizeInfo[0].result && sizeInfo[0].result.aborted)) {
+                throw new Error("Aborted");
+            }
 
             let { width, height, devicePixelRatio, origWindowY } = sizeInfo[0].result;
             height = Math.min(height, 16000);
@@ -323,7 +379,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (errMsg.includes('Another debugger is already attached')) {
                 errMsg = 'Please close Developer Tools (F12) on this page to capture it.';
             }
-            alert('Failed to capture page: ' + errMsg);
+            if (errMsg !== 'Aborted') {
+                alert('Failed to capture page: ' + errMsg);
+            }
             
             loadingState.classList.add('hidden');
             captureBtn.style.display = 'flex';
