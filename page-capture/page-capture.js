@@ -76,8 +76,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     let maxH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
                     let maxW = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
                     for (let s of scrollers) {
-                        if (s.scrollHeight > maxH) maxH = s.scrollHeight;
-                        if (s.scrollWidth > maxW) maxW = s.scrollWidth;
+                        // The required viewport height for an inner scroller to fully expand is its scrollHeight
+                        // PLUS the space taken by fixed headers/footers (which is window viewport height minus scroller's client height)
+                        let fixedVerticalSpace = Math.max(0, window.innerHeight - s.clientHeight);
+                        let requiredHeight = s.scrollHeight + fixedVerticalSpace + 50; // Add 50px buffer
+                        if (requiredHeight > maxH) maxH = requiredHeight;
+
+                        let fixedHorizontalSpace = Math.max(0, window.innerWidth - s.clientWidth);
+                        let requiredWidth = s.scrollWidth + fixedHorizontalSpace;
+                        if (requiredWidth > maxW) maxW = requiredWidth;
                     }
 
                     // CRUCIAL: Scroll back to the absolute TOP before returning!
