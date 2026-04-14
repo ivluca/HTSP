@@ -59,10 +59,13 @@ function createActionButton(iconName, isActive, onClick) {
 function switchTab(targetId) {
   const allTabs = document.querySelectorAll('.tab');
   const iframesAndContainers = document.querySelectorAll('.ai-frame');
+  const dropdownContent = document.getElementById('dropdown-content');
   
   iframesAndContainers.forEach(c => c.classList.add('hidden'));
   const target = document.getElementById(targetId);
   if (target) target.classList.remove('hidden');
+
+  if (dropdownContent) dropdownContent.classList.remove('show');
 
   if (targetId === 'tab-manager-container') {
     requestRenderBrowserTabs();
@@ -83,6 +86,34 @@ function setupEventListeners() {
   const allTabs = document.querySelectorAll('.tab');
   const searchBox = document.getElementById('search-box');
   const tabManagerContainer = document.getElementById('tab-manager-container');
+  const dropdownBtn = document.getElementById('dropdown-btn');
+  const dropdownContent = document.getElementById('dropdown-content');
+
+  // Populate Dropdown
+  if (dropdownContent && allTabs) {
+    dropdownContent.innerHTML = '';
+    allTabs.forEach(tab => {
+      const item = document.createElement('a');
+      item.textContent = tab.textContent;
+      item.classList.add('dropdown-item');
+      item.dataset.target = tab.dataset.target;
+      item.addEventListener('click', () => switchTab(item.dataset.target));
+      dropdownContent.appendChild(item);
+    });
+  }
+
+  if (dropdownBtn && dropdownContent) {
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownContent.classList.toggle('show');
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (dropdownContent && dropdownContent.classList.contains('show') && !e.target.closest('.dropdown')) {
+      dropdownContent.classList.remove('show');
+    }
+  });
 
   searchBox.addEventListener('input', (e) => {
     searchTerm = e.target.value;
