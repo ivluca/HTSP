@@ -291,10 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!el) return null;
                         const rect = el.getBoundingClientRect();
                         return { 
-                            x: Math.round(rect.left), 
-                            y: Math.round(rect.top), 
-                            width: Math.round(rect.width), 
-                            height: Math.round(rect.height) 
+                            x: rect.left, 
+                            y: rect.top, 
+                            width: rect.width, 
+                            height: rect.height 
                         };
                     }
                 });
@@ -347,12 +347,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         const img = new Image();
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
-                            // devicePixelRatio scaling is inherently present in the Full Page capture output size
-                            canvas.width = clipRect.width * devicePixelRatio;
-                            canvas.height = clipRect.height * devicePixelRatio;
+                            const physicalX = clipRect.x * devicePixelRatio;
+                            const physicalY = clipRect.y * devicePixelRatio;
+                            const physicalWidth = clipRect.width * devicePixelRatio;
+                            const physicalHeight = clipRect.height * devicePixelRatio;
+
+                            // Floor/Ceil ensures no sub-pixel clipping, padding grabs up to 2px outlines/borders
+                            const padding = Math.round(2 * devicePixelRatio);
+                            const srcX = Math.max(0, Math.floor(physicalX) - padding);
+                            const srcY = Math.max(0, Math.floor(physicalY) - padding);
+                            const srcEndX = Math.min(img.width, Math.ceil(physicalX + physicalWidth) + padding);
+                            const srcEndY = Math.min(img.height, Math.ceil(physicalY + physicalHeight) + padding);
+
+                            canvas.width = srcEndX - srcX;
+                            canvas.height = srcEndY - srcY;
+
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 
-                                clipRect.x * devicePixelRatio, clipRect.y * devicePixelRatio, canvas.width, canvas.height,
+                                srcX, srcY, canvas.width, canvas.height,
                                 0, 0, canvas.width, canvas.height
                             );
                             resolve(canvas.toDataURL('image/png'));
