@@ -6,9 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('download-capture-btn');
     let capturedDataUrl = null;
 
-    if (!captureBtn) return; // Prevent errors if not in DOM
+        const captureFrameBtn = document.getElementById('capture-frame-btn');
+    if (!captureBtn) return;
 
-    captureBtn.addEventListener('click', async () => {
+    captureBtn.addEventListener('click', () => performCapture('full'));
+    if (captureFrameBtn) captureFrameBtn.addEventListener('click', () => performCapture('frame'));
+
+    async function performCapture(captureMode) {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         
         if (!tab || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('about:') || tab.url.startsWith('edge://')) {
@@ -16,15 +20,68 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Show loading
+        let targetType = captureMode;
+        if (captureMode === 'frame') {
+            try {
+                await chrome.scripting.insertCSS({
+                    target: { tabId: tab.id },
+                    css: `.htsp-highlight-overlay { position: fixed; pointer-events: none; z-index: 2147483647; background: rgba(20, 96, 186, 0.2); border: 2px solid rgba(20, 96, 186, 0.8); transition: all 0.05s ease; cursor: crosshair; }`
+                });
+            } catch (e) {}
+
+            const selectionResult = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                    return new Promise((resolve) => {
+                        let overlay = document.createElement('div');
+                        overlay.className = 'htsp-highlight-overlay';
+                        document.body.appendChild(overlay);
+
+                        let currentTarget = null;
+                        const moveHandler = (e) => {
+                            if (currentTarget === e.target) return;
+                            currentTarget = e.target;
+                            const rect = currentTarget.getBoundingClientRect();
+                            overlay.style.top = rect.top + 'px';
+                            overlay.style.left = rect.left + 'px';
+                            overlay.style.width = rect.width + 'px';
+                            overlay.style.height = rect.height + 'px';
+                        };
+
+                        const clickHandler = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            document.removeEventListener('mousemove', moveHandler, true);
+                            document.removeEventListener('click', clickHandler, true);
+                            overlay.remove();
+
+                            const isFullPage = (currentTarget === document.body || currentTarget === document.documentElement);
+                            if (isFullPage) {
+                                resolve({ type: 'full' });
+                            } else {
+                                const uniqueId = `htsp-target-${Date.now()}`;
+                                currentTarget.dataset.htspTarget = uniqueId;
+                                resolve({ type: 'frame', targetId: uniqueId });
+                            }
+                        };
+
+                        document.addEventListener('mousemove', moveHandler, true);
+                        document.addEventListener('click', clickHandler, true);
+                    });
+                }
+            });
+
+            if (!selectionResult || !selectionResult[0] || !selectionResult[0].result) return;
+            targetType = selectionResult[0].result.type;
+        }
+
         captureBtn.style.display = 'none';
+        if (captureFrameBtn) captureFrameBtn.style.display = 'none';
         loadingState.classList.remove('hidden');
         previewContainer.classList.add('hidden');
 
         try {
-
-            // 1. Calculate actual scrollable height. To handle lazy loading and virtualized lists (like Gemini/ChatGPT),
-            // we must smoothly scroll down piece by piece to perfectly simulate human interaction and load all DOM items.
             const sizeInfo = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: async () => {
@@ -45,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.__htsp_scrollers = [];
                     const origWindowY = window.scrollY;
                     
-                    // Smoothly scroll Main Window
                     let lastScroll = -1;
                     while (window.scrollY < Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight && window.scrollY > lastScroll) {
                         lastScroll = window.scrollY;
@@ -54,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     window.scrollTo(0, Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
                     
-                    // Smoothly scroll Inner Scrollers
                     for (let i = 0; i < scrollers.length; i++) {
                         let s = scrollers[i];
                         s.dataset.htspId = i.toString();
@@ -64,22 +119,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         while (s.scrollTop < s.scrollHeight - s.clientHeight && s.scrollTop > sLast) {
                             sLast = s.scrollTop;
                             s.scrollTop += 800;
-                            await delays(150); // Give time for new data to fetch
+                            await delays(150);
                         }
                         s.scrollTop = s.scrollHeight;
                     }
 
-                    // Settle time for images and DOM manipulation
                     await delays(800);
 
-                    // NOW calculate max height after lazy content has been rendered
                     let maxH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
                     let maxW = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
                     for (let s of scrollers) {
-                        // The required viewport height for an inner scroller to fully expand is its scrollHeight
-                        // PLUS the space taken by fixed headers/footers (which is window viewport height minus scroller's client height)
                         let fixedVerticalSpace = Math.max(0, window.innerHeight - s.clientHeight);
-                        let requiredHeight = s.scrollHeight + fixedVerticalSpace + 50; // Add 50px buffer
+                        let requiredHeight = s.scrollHeight + fixedVerticalSpace + 50;
                         if (requiredHeight > maxH) maxH = requiredHeight;
 
                         let fixedHorizontalSpace = Math.max(0, window.innerWidth - s.clientWidth);
@@ -87,32 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (requiredWidth > maxW) maxW = requiredWidth;
                     }
 
-                    // CRUCIAL: Scroll back to the absolute TOP before returning!
-                    // This forces virtualized lists to anchor from 0 when we expand the viewport,
-                    // preventing top items from being clipped if the chat is very long. 
                     window.scrollTo(0, 0);
                     for (let s of scrollers) {
                         s.scrollTop = 0;
                     }
                     await delays(500);
 
-                    return {
-                        width: maxW,
-                        height: maxH,
-                        devicePixelRatio: window.devicePixelRatio || 1,
-                        origWindowY: origWindowY
-                    };
+                    return { width: maxW, height: maxH, devicePixelRatio: window.devicePixelRatio || 1, origWindowY: origWindowY };
                 }
             });
 
             let { width, height, devicePixelRatio, origWindowY } = sizeInfo[0].result;
-            // Cap height to prevent renderer crash
             height = Math.min(height, 16000);
 
-            // 2. Attach Debugger
             await chrome.debugger.attach({ tabId: tab.id }, "1.3");
 
-            // 3. Force viewport to match full content size
             await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.setDeviceMetricsOverride", {
                 width: width,
                 height: height,
@@ -120,22 +160,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 mobile: false
             });
 
-            // Wait a moment for the DOM to reflow/expand to the new giant viewport
             await new Promise(r => setTimeout(r, 600));
 
-            // 4. Capture the screenshot (now that the whole page fits in the viewport)
-            const screenshotResult = await chrome.debugger.sendCommand({ tabId: tab.id }, "Page.captureScreenshot", {
-                format: "png",
-                fromSurface: true
-            });
+            let screenshotParams = { format: "png", fromSurface: true };
+            if (targetType === 'frame') {
+                const clipResult = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                        const el = document.querySelector('[data-htsp-target]');
+                        if (!el) return null;
+                        const rect = el.getBoundingClientRect();
+                        return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+                    }
+                });
+                if (clipResult && clipResult[0] && clipResult[0].result) {
+                    const r = clipResult[0].result;
+                    if (r.width > 0 && r.height > 0) {
+                        screenshotParams.clip = { x: r.x, y: r.y, width: r.width, height: r.height, scale: 1 };
+                        screenshotParams.captureBeyondViewport = true;
+                    }
+                }
+            }
 
-            // 5. Restore viewport
+            const screenshotResult = await chrome.debugger.sendCommand({ tabId: tab.id }, "Page.captureScreenshot", screenshotParams);
+
             await chrome.debugger.sendCommand({ tabId: tab.id }, "Emulation.clearDeviceMetricsOverride", {});
-
-            // Detach Debugger immediately after success
             await chrome.debugger.detach({ tabId: tab.id });
 
-            // Restoring viewport scroll position so user isn't stuck at the bottom
             try {
                 await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
@@ -151,12 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             delete window.__htsp_scrollers;
                         }
+                        const el = document.querySelector('[data-htsp-target]');
+                        if (el) delete el.dataset.htspTarget;
                     },
                     args: [origWindowY ?? 0]
                 });
-            } catch (e) {
-                console.warn('Scroll restore failed', e);
-            }
+            } catch (e) {}
 
             if (screenshotResult && screenshotResult.data) {
                 capturedDataUrl = "data:image/png;base64," + screenshotResult.data;
@@ -164,12 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 loadingState.classList.add('hidden');
                 previewContainer.classList.remove('hidden');
-                captureBtn.style.display = 'flex'; // Show button again
+                captureBtn.style.display = 'flex';
+                if (captureFrameBtn) captureFrameBtn.style.display = 'flex';
                 
-                captureBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /><circle cx="12" cy="12" r="3" /></svg>
-                    Capture Again
-                `;
+                captureBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /><circle cx="12" cy="12" r="3" /></svg>Full Page`;
+                if (captureFrameBtn) captureFrameBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M9 9m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /></svg>Frame`;
             } else {
                 throw new Error("Failed to capture screenshot data");
             }
@@ -179,11 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Failed to capture page: ' + (error.message || error));
             loadingState.classList.add('hidden');
             captureBtn.style.display = 'flex';
+            if (captureFrameBtn) captureFrameBtn.style.display = 'flex';
             
-            // Try to detach in case of fatal error before detach logic 
             chrome.debugger.detach({ tabId: tab.id }, () => {});
             
-            // Try to restore scroll even on error
             try {
                 chrome.scripting.executeScript({
                     target: { tabId: tab.id },
@@ -194,11 +243,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (s) s.scrollTop = data.top;
                             });
                         }
+                        const el = document.querySelector('[data-htsp-target]');
+                        if (el) delete el.dataset.htspTarget;
                     }
                 });
             } catch(e) {}
         }
-    });
+    }
 
     downloadBtn.addEventListener('click', () => {
         if (!capturedDataUrl) return;
