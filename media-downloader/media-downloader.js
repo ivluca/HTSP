@@ -146,7 +146,7 @@ async function fetchAndRenderMedia() {
     }
     
     // Don't try to inject script into chrome:// or other restricted URLs
-    if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
       showNoMediaMessage("Cannot extract media from browser system pages.");
       return;
     }
