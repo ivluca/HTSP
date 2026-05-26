@@ -40,7 +40,44 @@ async function mergeAllWindows() {
       }
     }
   }
-  chrome.runtime.sendMessage({ type: 'REQUEST_CACHE_UPDATE' });
+}
+
+async function closeDuplicateTabs() {
+  // Query all tabs across all windows
+  const allTabs = await chrome.tabs.query({});
+
+  // Group tabs by their exact full URL
+  const urlMap = new Map();
+  for (const tab of allTabs) {
+    if (!tab.url || tab.url === '' || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) continue;
+    const key = tab.url;
+    if (!urlMap.has(key)) {
+      urlMap.set(key, []);
+    }
+    urlMap.get(key).push(tab);
+  }
+
+  const tabsToClose = [];
+  for (const [, tabs] of urlMap) {
+    if (tabs.length <= 1) continue;
+
+    // Keep the tab with the highest lastAccessed timestamp (most recently accessed)
+    // Fallback: if lastAccessed is undefined/equal, keep the one with the highest id (opened later)
+    tabs.sort((a, b) => {
+      const aTime = a.lastAccessed || 0;
+      const bTime = b.lastAccessed || 0;
+      if (bTime !== aTime) return bTime - aTime;
+      return b.id - a.id;
+    });
+
+    // The first element (index 0) is kept; the rest are duplicates to be closed
+    const [, ...duplicates] = tabs;
+    duplicates.forEach(tab => tabsToClose.push(tab.id));
+  }
+
+  if (tabsToClose.length === 0) return;
+
+  await chrome.tabs.remove(tabsToClose);
 }
 
 function setupTabManagerHeader() {
@@ -54,6 +91,7 @@ function setupTabManagerHeader() {
   actions.classList.add('header-actions');
 
   const mergeBtn = createActionButton('merge', false, mergeAllWindows);
+  const dedupeBtn = createActionButton('dedupe', false, closeDuplicateTabs);
 
   const showLinksBtn = createActionButton('link', showLinks, async () => {
     showLinks = !showLinks;
@@ -69,7 +107,7 @@ function setupTabManagerHeader() {
   });
   groupBtn.disabled = selectedTabs.size === 0;
 
-  actions.append(mergeBtn, showLinksBtn, groupBtn);
+  actions.append(mergeBtn, dedupeBtn, showLinksBtn, groupBtn);
   tabManagerHeader.append(title, actions);
 }
 
