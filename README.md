@@ -2,7 +2,13 @@
 
 **HTSP** is a Chrome extension that integrates web tools and a powerful tab manager into the browser's Side Panel.
 
-## Features (v3.0)
+## Features (v3.1)
+
+### Google Chat Blocker
+Prevents senders from knowing when you have read their messages in Google Chat.
+- **Read Receipt Blocking:** Intercepts Google Chat's gRPC-Web requests and intercepts the `updateSpaceReadState` API calls.
+- **Optimistic UI:** Fakes a successful HTTP 200 response so that the chat appears "Read" locally to the user, preventing UI glitches, while remaining "Unread" to the sender.
+- **Isolated Injection:** Uses an isolated content script bridge and main-world interceptor to transparently modify the `window.fetch` API.
 
 ### Media Downloader
 Extracts and downloads media assets from the active tab.
