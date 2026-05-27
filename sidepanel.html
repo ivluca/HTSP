@@ -1,9 +1,11 @@
 <html lang="en">
   <head>
     <title>HTSP</title>
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="tab-manager/tab-manager.css">
     <link rel="stylesheet" href="media-downloader/media-downloader.css">
+    <link rel="stylesheet" href="read-receipt-blocker/read-receipt-blocker.css">
   </head>
   <body>
     <div id="header">
@@ -12,6 +14,7 @@
         <div class="tab" data-target="chatgpt-frame">ChatGPT</div>
         <div class="tab" data-target="gemini-frame">Gemini</div>
         <div class="tab" data-target="media-downloader-container">Media Downloader</div>
+        <div class="tab" data-target="read-receipt-container">Chat</div>
       </div>
       <div class="dropdown">
         <button id="dropdown-btn" class="dropdown-btn">
@@ -81,10 +84,12 @@
       </div>
       <iframe id="chatgpt-frame" class="ai-frame hidden" src="https://chatgpt.com/" allow="clipboard-write; microphone"></iframe>
       <iframe id="gemini-frame" class="ai-frame hidden" src="https://gemini.google.com/app" allow="clipboard-write; microphone"></iframe>
+      <div id="read-receipt-container" class="ai-frame hidden"></div>
     </div>
     <script src="sidepanel.js"></script>
     <script src="tab-manager/tab-manager.js"></script>
     <script src="media-downloader/media-downloader.js"></script>
+    <script src="read-receipt-blocker/read-receipt-blocker.js"></script>
     <script src="init.js"></script>
   </body>
 </html>

@@ -138,7 +138,64 @@ chrome.tabGroups.onUpdated.addListener(() => debouncedUpdateAndNotify());
 chrome.tabGroups.onMoved.addListener(() => debouncedUpdateAndNotify());
 
 
+
 // --- Initial Setup ---
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
+
+// ── Read Receipt Blocker ─────────────────────────────────────────
+
+const RRB_RULE_ID = 100; // unique ID, separate from header-mod rules (1-3)
+let rrbSessionBlocked = 0;
+
+async function setRrbRule(enabled) {
+  if (enabled) {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [RRB_RULE_ID],
+      addRules: [{
+        id: RRB_RULE_ID,
+        priority: 10,
+        action: { type: 'block' },
+        condition: {
+          urlFilter: '*chat.googleapis.com/v1/users/*/spaces/*/spaceReadState*',
+          requestMethods: ['patch'],
+          resourceTypes: ['xmlhttprequest']
+        }
+      }]
+    });
+  } else {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [RRB_RULE_ID]
+    });
+  }
+}
+
+// Restore RRB rule on startup based on saved state
+chrome.runtime.onStartup.addListener(async () => {
+  const data = await chrome.storage.local.get('rrbEnabled');
+  if (data.rrbEnabled) await setRrbRule(true);
+});
+
+chrome.runtime.onInstalled.addListener(async () => {
+  const data = await chrome.storage.local.get('rrbEnabled');
+  if (data.rrbEnabled) await setRrbRule(true);
+});
+
+// Track blocked requests and notify side panel
+chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener(async (info) => {
+  if (info.rule.ruleId !== RRB_RULE_ID) return;
+  rrbSessionBlocked++;
+  const stored = await chrome.storage.local.get('rrbBlockedTotal');
+  const total = (stored.rrbBlockedTotal ?? 0) + 1;
+  await chrome.storage.local.set({ rrbBlockedTotal: total });
+  sendMessageToSidePanel({ type: 'RRB_BLOCKED', total, session: rrbSessionBlocked });
+});
+
+// Handle toggle from side panel
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'RRB_SET_ENABLED') {
+    setRrbRule(msg.enabled).then(() => sendResponse({ ok: true }));
+    return true; // keep channel open for async response
+  }
+});

@@ -72,6 +72,9 @@ function switchTab(targetId) {
   if (targetId === 'tab-manager-container') {
     requestRenderBrowserTabs();
   }
+  if (targetId === 'read-receipt-container') {
+    if (typeof loadState === 'function') loadState();
+  }
 
   allTabs.forEach(t => {
     if (t.dataset.target === targetId) {
