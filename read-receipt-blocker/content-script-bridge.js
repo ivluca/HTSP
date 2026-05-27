@@ -5,20 +5,23 @@
 (function () {
   'use strict';
 
-  function pushState(enabled) {
+  function pushState(enabled, typingBlocked) {
     document.documentElement.setAttribute('data-rrb-enabled', enabled ? 'true' : 'false');
-    window.dispatchEvent(new CustomEvent('__rrb_state__', { detail: { enabled } }));
+    document.documentElement.setAttribute('data-typing-blocked', typingBlocked ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('__rrb_state__', { detail: { enabled, typingBlocked } }));
   }
 
   // Push initial state as soon as possible
-  chrome.storage.local.get('rrbEnabled', (data) => {
-    pushState(data.rrbEnabled ?? false);
+  chrome.storage.local.get(['rrbEnabled', 'typingBlocked'], (data) => {
+    pushState(data.rrbEnabled ?? false, data.typingBlocked ?? false);
   });
 
   // React to toggle changes from the side panel in real-time
   chrome.storage.onChanged.addListener((changes) => {
-    if ('rrbEnabled' in changes) {
-      pushState(changes.rrbEnabled.newValue ?? false);
+    if ('rrbEnabled' in changes || 'typingBlocked' in changes) {
+      chrome.storage.local.get(['rrbEnabled', 'typingBlocked'], (data) => {
+        pushState(data.rrbEnabled ?? false, data.typingBlocked ?? false);
+      });
     }
   });
 

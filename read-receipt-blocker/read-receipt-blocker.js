@@ -4,10 +4,12 @@
 let blockedCount = 0;
 let sessionBlocked = 0;
 let isEnabled = false;
+let isTypingBlocked = false;
 
 async function loadState() {
-  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal']);
+  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked']);
   isEnabled = data.rrbEnabled ?? false;
+  isTypingBlocked = data.typingBlocked ?? false;
   blockedCount = data.rrbBlockedTotal ?? 0;
   renderPanel();
 }
@@ -15,8 +17,14 @@ async function loadState() {
 async function setEnabled(val) {
   isEnabled = val;
   await chrome.storage.local.set({ rrbEnabled: val });
-  // Notify service worker to update declarativeNetRequest rules
   chrome.runtime.sendMessage({ type: 'RRB_SET_ENABLED', enabled: val }).catch(() => {});
+  renderPanel();
+}
+
+async function setTypingBlocked(val) {
+  isTypingBlocked = val;
+  await chrome.storage.local.set({ typingBlocked: val });
+  // The content script will dynamically read this state via storage changes
   renderPanel();
 }
 
@@ -43,11 +51,25 @@ function renderPanel() {
           <span class="rrb-slider"></span>
         </label>
       </div>
+      
+      <div class="setting-item">
+        <div class="setting-text">
+          <div class="setting-title">Block Typing in Chat</div>
+          <div class="setting-desc">Hide your typing indicator in Google Chat</div>
+        </div>
+        <label class="rrb-switch">
+          <input type="checkbox" id="typing-toggle" ${isTypingBlocked ? 'checked' : ''}>
+          <span class="rrb-slider"></span>
+        </label>
+      </div>
     </div>
   `;
 
   document.getElementById('rrb-toggle').addEventListener('change', (e) => {
     setEnabled(e.target.checked);
+  });
+  document.getElementById('typing-toggle').addEventListener('change', (e) => {
+    setTypingBlocked(e.target.checked);
   });
 }
 
