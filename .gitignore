@@ -1,6 +1,7 @@
 # IDE files
 .idea/
 .vscode/
+.temp/
 
 # Node modules
 node_modules/
