@@ -1,6 +1,6 @@
 {
   "name": "HTSP",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "manifest_version": 3,
   "description": "Help Tools Side Panel",
   "host_permissions": [
