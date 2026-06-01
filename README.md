@@ -2,7 +2,7 @@
 
 **HTSP** is a Chrome extension that integrates web tools and a powerful tab manager into the browser's Side Panel.
 
-## Features (v3.4)
+## Features (v3.5)
 
 ### Google Chat Blocker (Options Tab)
 Prevents senders from knowing when you have read their messages or when you are typing in Google Chat.
@@ -30,9 +30,10 @@ Tooling for managing open browser tabs from the Side Panel.
 - Viewports are styled to fit the constraints of the Chrome Side Panel dimension limits.
 
 ### JSON Viewer
-A developer-focused tab for formatting, inspecting, and copying JSON data right within the Side Panel.
+A powerful, built-in JSON formatter and interactive viewer for developers.
 - **Auto-Formatting:** Paste unformatted JSON and press Enter to instantly prettify it.
 - **Interactive Tree View:** Expand and collapse deep JSON objects and arrays effortlessly.
+- **Search & Highlight:** Find keys or values instantly with the built-in search bar (supports `Enter` / `Shift+Enter` to cycle through matches).
 - **Visual Hierarchy:** Clean, GPT-style minimal interface with clear structural indentation and array boundaries.
 - **Node-level Copying:** One-click copy buttons (clipboard) for copying any specific object, array, or primitive value exactly as displayed.
 

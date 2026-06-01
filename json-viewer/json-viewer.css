@@ -8,6 +8,68 @@
   background: var(--bg-color);
 }
 
+/* ── Search area ────────────────────────────────────────── */
+#jv-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-color);
+  z-index: 10;
+}
+
+#jv-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--search-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0 10px;
+  transition: border-color 0.15s;
+}
+
+#jv-search-wrap:focus-within {
+  border-color: var(--focus-border);
+}
+
+.jv-search-icon {
+  color: var(--placeholder-text);
+  flex-shrink: 0;
+}
+
+#jv-search {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-color);
+  font-family: inherit;
+}
+
+#jv-search-count {
+  font-size: 11.5px;
+  color: var(--placeholder-text);
+  white-space: nowrap;
+}
+
+.jv-highlight {
+  background-color: rgba(255, 235, 59, 0.4);
+  color: inherit;
+  border-radius: 2px;
+}
+.jv-highlight.active {
+  background-color: #f57c00;
+  color: #fff;
+}
+[data-theme="dark"] .jv-highlight {
+  background-color: rgba(251, 188, 4, 0.4);
+}
+[data-theme="dark"] .jv-highlight.active {
+  background-color: #f29900;
+  color: #000;
+}
+
 /* ── Output area (scrollable, takes remaining space) ── */
 #jv-output-area {
   flex: 1;
