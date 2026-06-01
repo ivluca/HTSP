@@ -6,6 +6,44 @@ let sessionBlocked = 0;
 let isEnabled = false;
 let isTypingBlocked = false;
 
+// ── Feature Manager ─────────────────────────────────────────────────────────
+const FEATURES = [
+  { id: 'tab-manager-container', label: 'Tab Manager' },
+  { id: 'chatgpt-frame',         label: 'ChatGPT' },
+  { id: 'gemini-frame',          label: 'Gemini' },
+  { id: 'media-downloader-container', label: 'Media Downloader' },
+  { id: 'json-viewer-container', label: 'JSON Viewer' },
+];
+
+async function loadFeatureStates() {
+  const data = await chrome.storage.local.get('htspFeatures');
+  const states = data.htspFeatures || {};
+  FEATURES.forEach(f => {
+    const enabled = states[f.id] !== false; // default ON
+    const tab = document.querySelector(`.tab[data-target="${f.id}"]`);
+    if (tab) tab.style.display = enabled ? '' : 'none';
+
+    // Also update dropdown items
+    const dropdownItem = document.querySelector(`.dropdown-item[data-target="${f.id}"]`);
+    if (dropdownItem) dropdownItem.style.display = enabled ? '' : 'none';
+  });
+
+  // If the currently active tab was hidden, switch to first visible tab
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab && activeTab.style.display === 'none') {
+    const firstVisible = document.querySelector('.tab:not([style*="display: none"])');
+    if (firstVisible) switchTab(firstVisible.dataset.target);
+  }
+}
+
+async function setFeatureEnabled(featureId, enabled) {
+  const data = await chrome.storage.local.get('htspFeatures');
+  const states = data.htspFeatures || {};
+  states[featureId] = enabled;
+  await chrome.storage.local.set({ htspFeatures: states });
+  await loadFeatureStates();
+}
+
 async function loadState() {
   const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked']);
   isEnabled = data.rrbEnabled ?? false;
@@ -35,12 +73,32 @@ async function resetStats() {
   renderPanel();
 }
 
-function renderPanel() {
+async function renderPanel() {
   const container = document.getElementById('read-receipt-container');
   if (!container) return;
 
+  // Load feature states for toggles
+  const featureData = await chrome.storage.local.get('htspFeatures');
+  const featureStates = featureData.htspFeatures || {};
+
+  const featureTogglesHtml = FEATURES.map(f => {
+    const checked = featureStates[f.id] !== false ? 'checked' : '';
+    return `
+      <div class="setting-item">
+        <div class="setting-text">
+          <div class="setting-title">${f.label}</div>
+        </div>
+        <label class="rrb-switch">
+          <input type="checkbox" class="feature-toggle" data-feature="${f.id}" ${checked}>
+          <span class="rrb-slider"></span>
+        </label>
+      </div>
+    `;
+  }).join('');
+
   container.innerHTML = `
     <div class="setting-list">
+      <div class="setting-section-header">Google Chat</div>
       <div class="setting-item">
         <div class="setting-text">
           <div class="setting-title">Block Seen in Chat</div>
@@ -62,6 +120,9 @@ function renderPanel() {
           <span class="rrb-slider"></span>
         </label>
       </div>
+
+      <div class="setting-section-header">Features</div>
+      ${featureTogglesHtml}
     </div>
   `;
 
@@ -70,6 +131,13 @@ function renderPanel() {
   });
   document.getElementById('typing-toggle').addEventListener('change', (e) => {
     setTypingBlocked(e.target.checked);
+  });
+
+  // Feature toggles
+  container.querySelectorAll('.feature-toggle').forEach(toggle => {
+    toggle.addEventListener('change', (e) => {
+      setFeatureEnabled(e.target.dataset.feature, e.target.checked);
+    });
   });
 }
 
@@ -85,4 +153,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', loadState);
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadState();
+  await loadFeatureStates();
+});
+
