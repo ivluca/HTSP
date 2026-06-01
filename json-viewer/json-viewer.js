@@ -4,18 +4,54 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
   let currentJson = null;
+  let searchTerm = '';
+  let searchResults = [];
+  let currentSearchIndex = -1;
 
   // ── DOM refs (populated after DOMContentLoaded) ───────────────────────────
-  let container, outputArea, input, errorBar, clearBtn;
+  let container, outputArea, input, errorBar, clearBtn, searchInput, searchCountEl;
 
   function init() {
-    container  = document.getElementById('json-viewer-container');
-    outputArea = document.getElementById('jv-output-area');
-    input      = document.getElementById('jv-input');
-    errorBar   = document.getElementById('jv-error-bar');
-    clearBtn   = document.getElementById('jv-clear-btn');
+    container     = document.getElementById('json-viewer-container');
+    outputArea    = document.getElementById('jv-output-area');
+    input         = document.getElementById('jv-input');
+    errorBar      = document.getElementById('jv-error-bar');
+    clearBtn      = document.getElementById('jv-clear-btn');
+    searchInput   = document.getElementById('jv-search');
+    searchCountEl = document.getElementById('jv-search-count');
 
     if (!container) return;
+
+    // Search event
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        searchTerm = e.target.value.toLowerCase();
+        if (currentJson !== null) {
+          renderTree(currentJson);
+          
+          searchResults = Array.from(outputArea.querySelectorAll('.jv-highlight'));
+          currentSearchIndex = -1;
+          if (searchResults.length > 0 && searchTerm) {
+            jumpToNextSearchMatch();
+          } else {
+            updateSearchCount();
+          }
+        }
+      });
+
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (searchResults.length > 0) {
+            if (e.shiftKey) {
+              jumpToPrevSearchMatch();
+            } else {
+              jumpToNextSearchMatch();
+            }
+          }
+        }
+      });
+    }
 
     // Format on Enter (no shift)
     input.addEventListener('keydown', (e) => {
@@ -36,6 +72,13 @@
       input.value = '';
       input.style.height = 'auto';
       currentJson = null;
+      if (searchInput) {
+        searchInput.value = '';
+        searchTerm = '';
+        searchResults = [];
+        currentSearchIndex = -1;
+        updateSearchCount();
+      }
       showEmpty();
       hideError();
     });
@@ -82,6 +125,8 @@
     const isObj = value !== null && typeof value === 'object';
     const isArr = Array.isArray(value);
 
+    let hasMatch = false;
+
     if (isObj) {
       const childCount = Object.keys(value).length;
       toggle.className = childCount > 0 ? 'jv-toggle expanded' : 'jv-toggle leaf';
@@ -90,14 +135,14 @@
       if (key !== null) {
         const keySpan = document.createElement('span');
         keySpan.className = 'jv-key';
-        keySpan.textContent = JSON.stringify(key);
+        if (appendHighlightedText(keySpan, JSON.stringify(key))) hasMatch = true;
         content.appendChild(keySpan);
       }
 
       // Opening bracket
       const openBracket = document.createElement('span');
       openBracket.className = 'jv-bracket';
-      openBracket.textContent = isArr ? '[' : '{';
+      openBracket.textContent = isArr ? (childCount === 0 ? '[]' : '[') : (childCount === 0 ? '{}' : '{');
       content.appendChild(openBracket);
 
       // Summary (shown when collapsed)
@@ -125,7 +170,13 @@
           ? value.map((v, i) => [i, v])
           : Object.entries(value);
 
-        entries.forEach(([k, v]) => buildNode(childUl, k, v, false, depth + 1));
+        let childHasMatch = false;
+        entries.forEach(([k, v]) => {
+          if (buildNode(childUl, k, v, false, depth + 1)) {
+            childHasMatch = true;
+          }
+        });
+        hasMatch = hasMatch || childHasMatch;
 
         li.appendChild(childUl);
 
@@ -154,6 +205,14 @@
 
         toggle.addEventListener('click', toggleCollapse);
         summary.addEventListener('click', toggleCollapse);
+
+        // Auto-expand if search matches inside
+        if (searchTerm && childHasMatch) {
+          childUl.classList.remove('collapsed');
+          toggle.className = 'jv-toggle expanded';
+          summary.style.display = 'none';
+          closeLi.style.display = '';
+        }
       }
     } else {
       // Primitive value
@@ -163,13 +222,13 @@
       if (key !== null) {
         const keySpan = document.createElement('span');
         keySpan.className = 'jv-key';
-        keySpan.textContent = JSON.stringify(key);
+        if (appendHighlightedText(keySpan, JSON.stringify(key))) hasMatch = true;
         content.appendChild(keySpan);
       }
 
       const valSpan = document.createElement('span');
       valSpan.className = getValueClass(value);
-      valSpan.textContent = formatValue(value);
+      if (appendHighlightedText(valSpan, formatValue(value))) hasMatch = true;
       content.appendChild(valSpan);
 
       const copyBtn = makeCopyBtn(value);
@@ -180,9 +239,73 @@
     }
 
     parentEl.appendChild(li);
+    return hasMatch || (!key && isRoot);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+  function appendHighlightedText(parentEl, text) {
+    if (!searchTerm) {
+      parentEl.textContent = text;
+      return false;
+    }
+    const lowerText = text.toLowerCase();
+    let index = lowerText.indexOf(searchTerm);
+    if (index === -1) {
+      parentEl.textContent = text;
+      return false;
+    }
+
+    let currentIndex = 0;
+    while (index !== -1) {
+      parentEl.appendChild(document.createTextNode(text.substring(currentIndex, index)));
+      const mark = document.createElement('mark');
+      mark.className = 'jv-highlight';
+      mark.textContent = text.substring(index, index + searchTerm.length);
+      parentEl.appendChild(mark);
+      currentIndex = index + searchTerm.length;
+      index = lowerText.indexOf(searchTerm, currentIndex);
+    }
+    parentEl.appendChild(document.createTextNode(text.substring(currentIndex)));
+    return true;
+  }
+
+  function jumpToNextSearchMatch() {
+    if (searchResults.length === 0) return;
+    if (currentSearchIndex >= 0 && searchResults[currentSearchIndex]) {
+      searchResults[currentSearchIndex].classList.remove('active');
+    }
+    currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+    activateSearchMatch();
+  }
+
+  function jumpToPrevSearchMatch() {
+    if (searchResults.length === 0) return;
+    if (currentSearchIndex >= 0 && searchResults[currentSearchIndex]) {
+      searchResults[currentSearchIndex].classList.remove('active');
+    }
+    currentSearchIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+    activateSearchMatch();
+  }
+
+  function activateSearchMatch() {
+    const el = searchResults[currentSearchIndex];
+    if (el) {
+      el.classList.add('active');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    updateSearchCount();
+  }
+
+  function updateSearchCount() {
+    if (!searchCountEl) return;
+    if (searchResults.length === 0) {
+      if (searchTerm) searchCountEl.textContent = '0 of 0';
+      else searchCountEl.textContent = '';
+    } else {
+      searchCountEl.textContent = `${currentSearchIndex + 1} of ${searchResults.length}`;
+    }
+  }
+
   function getValueClass(val) {
     if (val === null)            return 'jv-null';
     if (typeof val === 'string') return 'jv-string';
