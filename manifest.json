@@ -1,6 +1,6 @@
 {
   "name": "HTSP",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "manifest_version": 3,
   "description": "Help Tools Side Panel",
   "host_permissions": [
@@ -25,7 +25,8 @@
     "activeTab",
     "scripting",
     "downloads",
-    "debugger"
+    "debugger",
+    "management"
   ],
   "icons": {
     "128": "images/icon.png",

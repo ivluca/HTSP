@@ -13,6 +13,7 @@ const FEATURES = [
   { id: 'gemini-frame',          label: 'Gemini' },
   { id: 'media-downloader-container', label: 'Media Downloader' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
+  { id: 'ext-manager-container', label: 'Extensions' },
 ];
 
 async function loadFeatureStates() {
