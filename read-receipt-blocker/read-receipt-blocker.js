@@ -14,6 +14,7 @@ const FEATURES = [
   { id: 'media-downloader-container', label: 'Media Downloader' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
   { id: 'ext-manager-container', label: 'Extensions' },
+  { id: 'pomodoro-container',    label: 'Pomodoro' },
 ];
 
 async function loadFeatureStates() {
