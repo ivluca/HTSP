@@ -2,7 +2,14 @@
 
 **HTSP** is a Chrome extension that integrates web tools and a powerful tab manager into the browser's Side Panel.
 
-## Features (v3.5)
+## Features (v3.6)
+
+### Pomodoro Timer
+A productivity timer integrated directly into the side panel to help manage work sessions.
+- **Modes:** Focus (45m), Short Break (5m), and Long Break (15m) with automatic mode switching based on completed sessions.
+- **Customization:** Configurable durations and an adjustable long break interval. Includes optional auto-start toggles for both focus sessions and breaks.
+- **Persistence:** Syncs timer settings using the `chrome.storage.local` API so settings persist across browser restarts.
+- **Theme Support:** Features an SVG-based progress ring with dynamic color transitions and natively inherits the active system theme (dark/light) via CSS variables.
 
 ### Google Chat Blocker (Options Tab)
 Prevents senders from knowing when you have read their messages or when you are typing in Google Chat.
