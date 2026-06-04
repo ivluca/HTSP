@@ -134,6 +134,7 @@
 .ext-switch input:checked + .ext-slider { background: #1a73e8; }
 .ext-switch input:checked + .ext-slider::before { transform: translateX(16px); }
 
+
 /* Delete button */
 .ext-delete-btn {
   background: none;

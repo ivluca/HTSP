@@ -36,9 +36,13 @@
 
   async function loadExtensions() {
     const exts = await chrome.management.getAll();
-    // Filter out self, sort enabled first then alphabetical
     allExtensions = exts
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        if (a.enabled && !b.enabled) return -1;
+        if (!a.enabled && b.enabled) return 1;
+
+        return a.name.localeCompare(b.name);
+      });
     renderList();
   }
 
@@ -80,7 +84,7 @@
         </div>
         <div class="ext-actions">
           <label class="ext-switch">
-            <input type="checkbox" ${ext.enabled ? 'checked' : ''}>
+            <input type="checkbox" class="ext-toggle-checkbox" ${ext.enabled ? 'checked' : ''}>
             <span class="ext-slider"></span>
           </label>
           <button class="ext-delete-btn" title="Remove extension">
@@ -95,10 +99,11 @@
       `;
 
       // Toggle handler
-      const toggle = item.querySelector('input[type="checkbox"]');
+      const toggle = item.querySelector('.ext-toggle-checkbox');
       toggle.addEventListener('change', () => {
         chrome.management.setEnabled(ext.id, toggle.checked);
       });
+
 
       // Delete handler
       const deleteBtn = item.querySelector('.ext-delete-btn');
