@@ -3,63 +3,305 @@
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  padding: 0;
+  padding: 12px;
   overflow-y: auto;
+  gap: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#read-receipt-container::-webkit-scrollbar {
+  display: none;
 }
 
 .setting-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
+/* ── Section Header ───────────────────────────────────────────────────── */
+.setting-section-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--section-title-text, #9aa0a6);
+  padding: 4px 4px 0;
+  margin: 0;
+  border: none;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────────── */
+.setting-section-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color, #dadce0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* ── Setting Item ─────────────────────────────────────────────────────── */
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border-color, #dadce0);
+  transition: background 0.12s;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item:hover {
+  background: var(--item-hover-bg, rgba(0,0,0,0.02));
 }
 
 .setting-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .setting-title {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-color, #202124);
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .setting-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--section-title-text, #9aa0a6);
+  line-height: 1.4;
 }
 
-.rrb-switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
-.rrb-switch input { opacity: 0; width: 0; height: 0; }
+/* ── Toggle Switch ────────────────────────────────────────────────────── */
+.rrb-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.rrb-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
 .rrb-slider {
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   background: var(--border-color, #dadce0);
-  border-radius: 24px; cursor: pointer;
+  border-radius: 20px;
+  cursor: pointer;
   transition: background 0.2s;
 }
-.rrb-slider::before {
-  content: ''; position: absolute;
-  width: 20px; height: 20px; left: 2px; top: 2px;
-  background: white; border-radius: 50%;
-  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.rrb-switch input:checked + .rrb-slider { background: #1a73e8; }
-.rrb-switch input:checked + .rrb-slider::before { transform: translateX(18px); }
 
-.setting-section-header {
+.rrb-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+
+.rrb-switch input:checked + .rrb-slider {
+  background: #1a73e8;
+}
+
+.rrb-switch input:checked + .rrb-slider::before {
+  transform: translateX(16px);
+}
+
+/* ── Dedupe Pattern Settings ──────────────────────────────────────────── */
+.setting-item.dedupe-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.setting-item.dedupe-setting:hover {
+  background: transparent;
+}
+
+.dedupe-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.dedupe-input-row input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border-color, #dadce0);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--search-bg, #f1f3f4);
+  color: var(--text-color, #202124);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.dedupe-input-row input:focus {
+  border-color: var(--focus-border, #1a73e8);
+}
+
+.dedupe-add-btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #1a73e8;
+  color: #fff;
+  font-family: inherit;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.dedupe-add-btn:hover {
+  background: #1557b0;
+}
+
+.dedupe-pattern-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dedupe-pattern-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--header-bg, #f8f9fa);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.dedupe-pattern-text {
+  color: var(--text-color, #202124);
+  word-break: break-all;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.dedupe-item-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dedupe-remove-btn, .dedupe-edit-btn, .dedupe-save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--section-title-text, #9aa0a6);
-  padding: 14px 20px 6px;
-  border-bottom: 1px solid var(--border-color, #dadce0);
+  transition: background 0.15s, color 0.15s;
+}
+
+.dedupe-edit-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+  color: #1a73e8;
+}
+
+.dedupe-save-btn {
+  color: #1a73e8;
+}
+
+.dedupe-save-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+  color: #1557b0;
+}
+
+.dedupe-pattern-edit-container {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dedupe-edit-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--focus-border, #1a73e8);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  background: var(--bg-color, #fff);
+  color: var(--text-color, #202124);
+  outline: none;
+  resize: none;
+  min-height: 48px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dedupe-edit-input::-webkit-scrollbar {
+  display: none;
+}
+
+.dedupe-remove-btn:hover {
+  background: rgba(234, 67, 53, 0.1);
+  color: #ea4335;
+}
+
+.dedupe-empty {
+  font-size: 11px;
+  color: var(--placeholder-text, #bdc1c6);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* ── Reset Settings Button ────────────────────────────────────────────── */
+.reset-settings-btn {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color, #dadce0);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--section-title-text, #9aa0a6);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-settings-btn:hover {
+  background: rgba(234, 67, 53, 0.06);
+  color: #ea4335;
+  border-color: #ea4335;
+}
+
+.reset-settings-btn.confirm {
+  background: #ea4335;
+  color: #fff;
+  border-color: #ea4335;
+}
+
+.reset-settings-btn.confirm:hover {
+  background: #d33426;
 }

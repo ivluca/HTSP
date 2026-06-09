@@ -75,6 +75,107 @@ async function resetStats() {
   renderPanel();
 }
 
+// ── Tab Manager Settings ────────────────────────────────────────────────────
+let dedupePatterns = [];
+
+async function loadDedupePatterns() {
+  const data = await chrome.storage.local.get('dedupePatterns');
+  dedupePatterns = data.dedupePatterns || [];
+}
+
+async function saveDedupePatterns() {
+  await chrome.storage.local.set({ dedupePatterns });
+}
+
+function renderDedupePatterns() {
+  const listEl = document.getElementById('dedupe-pattern-list');
+  if (!listEl) return;
+
+  if (dedupePatterns.length === 0) {
+    listEl.innerHTML = '<div class="dedupe-empty">No patterns added</div>';
+    return;
+  }
+
+  listEl.innerHTML = dedupePatterns.map((p, i) => `
+    <div class="dedupe-pattern-item" data-index="${i}">
+      <span class="dedupe-pattern-text">${escapeSettingHtml(p)}</span>
+      <div class="dedupe-pattern-edit-container hidden">
+        <textarea class="dedupe-edit-input" rows="2">${escapeSettingHtml(p)}</textarea>
+        <button class="dedupe-save-btn" data-index="${i}" title="Save">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+      </div>
+      <div class="dedupe-item-actions">
+        <button class="dedupe-edit-btn" data-index="${i}" title="Edit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button class="dedupe-remove-btn" data-index="${i}" title="Remove">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('.dedupe-remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.index);
+      dedupePatterns.splice(idx, 1);
+      await saveDedupePatterns();
+      renderDedupePatterns();
+    });
+  });
+
+  listEl.querySelectorAll('.dedupe-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Hide all other open edits
+      listEl.querySelectorAll('.dedupe-pattern-edit-container:not(.hidden)').forEach(el => el.classList.add('hidden'));
+      listEl.querySelectorAll('.dedupe-pattern-text.hidden').forEach(el => el.classList.remove('hidden'));
+      listEl.querySelectorAll('.dedupe-item-actions.hidden').forEach(el => el.classList.remove('hidden'));
+
+      const idx = parseInt(btn.dataset.index);
+      const itemEl = listEl.querySelector(`.dedupe-pattern-item[data-index="${idx}"]`);
+      itemEl.querySelector('.dedupe-pattern-text').classList.add('hidden');
+      itemEl.querySelector('.dedupe-item-actions').classList.add('hidden');
+      const editContainer = itemEl.querySelector('.dedupe-pattern-edit-container');
+      editContainer.classList.remove('hidden');
+      const input = editContainer.querySelector('.dedupe-edit-input');
+      input.focus();
+      input.selectionStart = input.selectionEnd = input.value.length;
+    });
+  });
+
+  listEl.querySelectorAll('.dedupe-save-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.index);
+      const itemEl = listEl.querySelector(`.dedupe-pattern-item[data-index="${idx}"]`);
+      const newVal = itemEl.querySelector('.dedupe-edit-input').value.trim();
+      
+      if (newVal) {
+        dedupePatterns[idx] = newVal;
+        await saveDedupePatterns();
+      }
+      renderDedupePatterns();
+    });
+  });
+
+  listEl.querySelectorAll('.dedupe-edit-input').forEach(input => {
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const btn = input.nextElementSibling;
+        btn.click();
+      } else if (e.key === 'Escape') {
+        renderDedupePatterns();
+      }
+    });
+  });
+}
+
+function escapeSettingHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 async function renderPanel() {
   const container = document.getElementById('read-receipt-container');
   if (!container) return;
@@ -101,30 +202,50 @@ async function renderPanel() {
   container.innerHTML = `
     <div class="setting-list">
       <div class="setting-section-header">Google Chat</div>
-      <div class="setting-item">
-        <div class="setting-text">
-          <div class="setting-title">Block Seen in Chat</div>
-          <div class="setting-desc">Hide your seen status in Google Chat</div>
+      <div class="setting-section-card">
+        <div class="setting-item">
+          <div class="setting-text">
+            <div class="setting-title">Block Seen in Chat</div>
+            <div class="setting-desc">Hide your seen status in Google Chat</div>
+          </div>
+          <label class="rrb-switch">
+            <input type="checkbox" id="rrb-toggle" ${isEnabled ? 'checked' : ''}>
+            <span class="rrb-slider"></span>
+          </label>
         </div>
-        <label class="rrb-switch">
-          <input type="checkbox" id="rrb-toggle" ${isEnabled ? 'checked' : ''}>
-          <span class="rrb-slider"></span>
-        </label>
+        <div class="setting-item">
+          <div class="setting-text">
+            <div class="setting-title">Block Typing in Chat</div>
+            <div class="setting-desc">Hide your typing indicator in Google Chat</div>
+          </div>
+          <label class="rrb-switch">
+            <input type="checkbox" id="typing-toggle" ${isTypingBlocked ? 'checked' : ''}>
+            <span class="rrb-slider"></span>
+          </label>
+        </div>
       </div>
-      
-      <div class="setting-item">
-        <div class="setting-text">
-          <div class="setting-title">Block Typing in Chat</div>
-          <div class="setting-desc">Hide your typing indicator in Google Chat</div>
+
+      <div class="setting-section-header">Tab Manager</div>
+      <div class="setting-section-card">
+        <div class="setting-item dedupe-setting">
+          <div class="setting-text">
+            <div class="setting-title">Dedupe URL Patterns</div>
+            <div class="setting-desc">URLs containing these keywords will be grouped as duplicates regardless of query parameters</div>
+          </div>
+          <div class="dedupe-input-row">
+            <input type="text" id="dedupe-pattern-input" placeholder="e.g. chat.google.com">
+            <button id="dedupe-add-btn" class="dedupe-add-btn">Add</button>
+          </div>
+          <div id="dedupe-pattern-list" class="dedupe-pattern-list"></div>
         </div>
-        <label class="rrb-switch">
-          <input type="checkbox" id="typing-toggle" ${isTypingBlocked ? 'checked' : ''}>
-          <span class="rrb-slider"></span>
-        </label>
       </div>
 
       <div class="setting-section-header">Features</div>
-      ${featureTogglesHtml}
+      <div class="setting-section-card">
+        ${featureTogglesHtml}
+      </div>
+
+      <button id="reset-all-settings" class="reset-settings-btn">Reset All Settings</button>
     </div>
   `;
 
@@ -135,11 +256,64 @@ async function renderPanel() {
     setTypingBlocked(e.target.checked);
   });
 
+  // Dedupe pattern handlers
+  const dedupeInput = document.getElementById('dedupe-pattern-input');
+  const dedupeAddBtn = document.getElementById('dedupe-add-btn');
+
+  async function addPattern() {
+    const val = dedupeInput.value.trim();
+    if (val && !dedupePatterns.includes(val)) {
+      dedupePatterns.push(val);
+      await saveDedupePatterns();
+      dedupeInput.value = '';
+      renderDedupePatterns();
+    }
+  }
+
+  dedupeAddBtn.addEventListener('click', addPattern);
+  dedupeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addPattern();
+    }
+  });
+
+   renderDedupePatterns();
+
   // Feature toggles
   container.querySelectorAll('.feature-toggle').forEach(toggle => {
     toggle.addEventListener('change', (e) => {
       setFeatureEnabled(e.target.dataset.feature, e.target.checked);
     });
+  });
+
+  // Reset all settings
+  document.getElementById('reset-all-settings').addEventListener('click', async () => {
+    const btn = document.getElementById('reset-all-settings');
+    if (btn.dataset.confirm !== 'true') {
+      btn.textContent = 'Confirm Reset?';
+      btn.classList.add('confirm');
+      btn.dataset.confirm = 'true';
+      setTimeout(() => {
+        btn.textContent = 'Reset All Settings';
+        btn.classList.remove('confirm');
+        btn.dataset.confirm = '';
+      }, 3000);
+      return;
+    }
+
+    await chrome.storage.local.remove([
+      'rrbEnabled', 'rrbBlockedTotal', 'typingBlocked',
+      'dedupePatterns', 'htspFeatures'
+    ]);
+    isEnabled = false;
+    isTypingBlocked = false;
+    dedupePatterns = [];
+    blockedCount = 0;
+    sessionBlocked = 0;
+    chrome.runtime.sendMessage({ type: 'RRB_SET_ENABLED', enabled: false }).catch(() => {});
+    await loadFeatureStates();
+    renderPanel();
   });
 }
 
@@ -156,6 +330,7 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadDedupePatterns();
   await loadState();
   await loadFeatureStates();
 });
