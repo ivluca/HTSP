@@ -43,14 +43,28 @@ async function mergeAllWindows() {
 }
 
 async function closeDuplicateTabs() {
+  // Load user-defined dedupe patterns from storage
+  const storage = await chrome.storage.local.get('dedupePatterns');
+  const patterns = storage.dedupePatterns || [];
+
   // Query all tabs across all windows
   const allTabs = await chrome.tabs.query({});
 
-  // Group tabs by their exact full URL
+  // Group tabs by their deduplication key
   const urlMap = new Map();
   for (const tab of allTabs) {
     if (!tab.url || tab.url === '' || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) continue;
-    const key = tab.url;
+
+    // Check if tab URL matches any user-defined pattern
+    // If it does, use the pattern as the dedup key (ignoring query params etc.)
+    let key = tab.url; // default: exact URL match
+    for (const pattern of patterns) {
+      if (tab.url.includes(pattern)) {
+        key = `__pattern__${pattern}`;
+        break;
+      }
+    }
+
     if (!urlMap.has(key)) {
       urlMap.set(key, []);
     }
