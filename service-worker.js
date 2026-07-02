@@ -110,7 +110,24 @@ const debounce = (func, delay) => {
   };
 };
 
+// Track whether a side panel is actually open. The tab cache is only ever
+// read by the panel, so there is no point rebuilding it (a full populated
+// getAll + session write) when nothing is listening.
+let panelConnections = 0;
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'htsp-panel') return;
+  panelConnections++;
+  // Give the freshly-opened panel up-to-date data (it may be stale because we
+  // skip rebuilds while closed).
+  updateCache().then(() => sendMessageToSidePanel({ type: 'CACHE_UPDATED' }));
+  port.onDisconnect.addListener(() => {
+    panelConnections = Math.max(0, panelConnections - 1);
+  });
+});
+
 const debouncedUpdateAndNotify = debounce(async () => {
+  if (panelConnections === 0) return; // no panel open → skip the rebuild
   await updateCache();
   sendMessageToSidePanel({ type: 'CACHE_UPDATED' });
 }, 150);

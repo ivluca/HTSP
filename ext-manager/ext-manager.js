@@ -5,6 +5,11 @@
   let allExtensions = [];
   let searchTerm = '';
 
+  const debounce = (fn, delay) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+  };
+
   function init() {
     const container = document.getElementById('ext-manager-container');
     if (!container) return;
@@ -20,10 +25,11 @@
       <div class="ext-list" id="ext-list"></div>
     `;
 
-    document.getElementById('ext-search-input').addEventListener('input', (e) => {
-      searchTerm = e.target.value.toLowerCase().trim();
+    const searchEl = document.getElementById('ext-search-input');
+    searchEl.addEventListener('input', debounce(() => {
+      searchTerm = searchEl.value.toLowerCase().trim();
       renderList();
-    });
+    }, 150));
 
     loadExtensions();
 

@@ -68,7 +68,14 @@ function switchTab(targetId) {
   
   iframesAndContainers.forEach(c => c.classList.add('hidden'));
   const target = document.getElementById(targetId);
-  if (target) target.classList.remove('hidden');
+  if (target) {
+    target.classList.remove('hidden');
+    // Lazy-load external AI iframes: only fetch the site the first time its
+    // tab is opened, so the panel doesn't load chatgpt/gemini on every open.
+    if (target.tagName === 'IFRAME' && !target.src && target.dataset.src) {
+      target.src = target.dataset.src;
+    }
+  }
 
   if (dropdownContent) dropdownContent.classList.remove('show');
 
@@ -165,6 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   requestRenderBrowserTabs();
   checkColorScheme();
+  // Signal to the service worker that a panel is open so it only maintains the
+  // tab cache while someone is actually viewing it. The port stays open for the
+  // panel's lifetime and disconnects automatically when the panel closes.
+  try { chrome.runtime.connect({ name: 'htsp-panel' }); } catch (e) { /* ignore */ }
 });
 
 chrome.runtime.onMessage.addListener((request) => {
