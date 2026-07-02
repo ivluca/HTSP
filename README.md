@@ -18,6 +18,12 @@ Prevents senders from knowing when you have read their messages or when you are 
 - **Optimistic UI:** Fakes a successful HTTP 200 response so that the chat appears "Read" locally to the user, preventing UI glitches, while remaining "Unread" to the sender.
 - **Isolated Injection:** Uses an isolated content script bridge and main-world interceptor to transparently modify the `window.fetch` and `XMLHttpRequest` APIs.
 
+### Unlock Right-Click & Copy (Options Tab)
+Re-enables right-click, text selection, copy/cut/paste, and Ctrl/Cmd keyboard shortcuts on pages that block them.
+- **Early Interception:** Registers a `document_start` MAIN-world content script whose capture-phase listeners fire before the page's own blockers, stopping them without suppressing the browser's default behavior.
+- **Broad Coverage:** Neutralizes inline `on*` handlers and injects a `user-select: text !important` stylesheet to defeat CSS-based selection blocking.
+- **Toggle & Persistence:** Registered/unregistered dynamically via `chrome.scripting` and restored on startup from `chrome.storage.local`.
+
 ### Media Downloader
 Extracts and downloads media assets from the active tab.
 - **Extraction:** Parses the DOM to identify `img`, `video` elements, and inline background images.
@@ -28,9 +34,10 @@ Extracts and downloads media assets from the active tab.
 
 ### Tab Manager
 Tooling for managing open browser tabs from the Side Panel.
-- **Organization:** Sub-groups tabs by window ID, prioritizing pinned tabs.
+- **Organization:** Sub-groups ungrouped tabs into per-window sections (Window 1, Window 2, …), with pinned and grouped tabs surfaced separately.
 - **Search & Reorder:** Implements fuzzy search across tab titles and drag-and-drop DOM reordering within windows.
 - **State Management:** Individual actions (pin, bookmark, reload, close) and bulk operations (merge windows, bulk pin, bulk close non-pinned).
+- **Copy Window Links:** Each window section has a copy button that copies the links of the tabs in that window only (never all open tabs).
 
 ### AI Workspaces
 - Embeds ChatGPT and Gemini web interfaces as internal frames within the Side Panel.

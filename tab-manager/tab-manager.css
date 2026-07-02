@@ -51,6 +51,8 @@ body {
 #search-box::placeholder { color: var(--placeholder-text); }
 #search-box:focus { border-color: var(--focus-border); outline: none; }
 .section-title { font-size: 11px; text-transform: uppercase; color: var(--section-title-text); margin: 12px 0 4px 0; }
+.window-section-header { display: flex; align-items: center; justify-content: space-between; }
+.window-section-header .action-btn.copy.active svg { stroke: #07C872; }
 #window-groups-container {
   height: calc(100% - var(--total-fixed-height)); /* Explicit height calculation */
   overflow-y: auto; /* Enable vertical scrolling */

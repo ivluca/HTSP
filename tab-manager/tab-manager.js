@@ -94,6 +94,39 @@ async function closeDuplicateTabs() {
   await chrome.tabs.remove(tabsToClose);
 }
 
+/**
+ * Copy the links of every tab that belongs to a single window.
+ * Only the tabs living in that window are copied — never all open tabs.
+ * @param {number} windowId
+ * @param {HTMLButtonElement} [btn] optional button to flash success feedback on
+ */
+async function copyWindowTabLinks(windowId, btn) {
+  const cachedState = await chrome.storage.session.get('tabCache');
+  const { windows: allWindows } = cachedState.tabCache || { windows: [] };
+  const win = allWindows.find(w => w.id === windowId);
+  if (!win || !win.tabs) return;
+
+  const links = win.tabs
+    .map(t => t.url)
+    .filter(url => url && !url.startsWith('chrome://') && !url.startsWith('chrome-extension://'));
+
+  if (links.length === 0) return;
+
+  try {
+    await navigator.clipboard.writeText(links.join('\n'));
+    if (btn) {
+      btn.innerHTML = icons.check;
+      btn.classList.add('active');
+      setTimeout(() => {
+        btn.innerHTML = icons.copy;
+        btn.classList.remove('active');
+      }, 1500);
+    }
+  } catch (err) {
+    console.error('Failed to copy tab links:', err);
+  }
+}
+
 function setupTabManagerHeader() {
   const tabManagerHeader = document.getElementById('tab-manager-header');
   tabManagerHeader.innerHTML = '';
@@ -168,7 +201,7 @@ async function renderBrowserTabs(filter = '') {
   const fragment = document.createDocumentFragment();
   const pinnedItems = [];
   const groupData = new Map();
-  const unpinnedItems = [];
+  const windowOtherItems = new Map(); // windowId -> [tab item elements]
 
   for (const tab of filteredTabs) {
       if (tab.pinned) {
@@ -179,7 +212,8 @@ async function renderBrowserTabs(filter = '') {
           }
           groupData.get(tab.groupId).tabs.push(createTabItem(tab, tab.title));
       } else {
-          unpinnedItems.push(createTabItem(tab, tab.title));
+          if (!windowOtherItems.has(tab.windowId)) windowOtherItems.set(tab.windowId, []);
+          windowOtherItems.get(tab.windowId).push(createTabItem(tab, tab.title));
       }
   }
 
@@ -252,14 +286,30 @@ async function renderBrowserTabs(filter = '') {
     fragment.appendChild(groupedTabsEl);
   }
 
-  if (unpinnedItems.length > 0) {
-    const otherTabsEl = document.createElement('div');
-    const otherTabsTitleEl = document.createElement('h3');
-    otherTabsTitleEl.classList.add('section-title');
-    otherTabsTitleEl.textContent = `Other Tabs (${unpinnedItems.length} tabs)`;
-    otherTabsEl.appendChild(otherTabsTitleEl);
-    unpinnedItems.forEach(item => otherTabsEl.appendChild(item));
-    fragment.appendChild(otherTabsEl);
+  // Split ungrouped/unpinned tabs by their window: "Window 1", "Window 2", ...
+  let windowCounter = 0;
+  for (const win of allWindows) {
+    const items = windowOtherItems.get(win.id);
+    if (!items || items.length === 0) continue;
+    windowCounter++;
+
+    const windowEl = document.createElement('div');
+
+    const headerEl = document.createElement('div');
+    headerEl.classList.add('window-section-header');
+
+    const titleEl = document.createElement('h3');
+    titleEl.classList.add('section-title');
+    titleEl.textContent = `Window ${windowCounter} (${items.length} tabs)`;
+    headerEl.appendChild(titleEl);
+
+    // Copy links of every tab that lives in THIS window only (not all open tabs).
+    const copyBtn = createActionButton('copy', false, () => copyWindowTabLinks(win.id, copyBtn));
+    headerEl.appendChild(copyBtn);
+
+    windowEl.appendChild(headerEl);
+    items.forEach(item => windowEl.appendChild(item));
+    fragment.appendChild(windowEl);
   }
 
   // --- Atomic DOM Update ---

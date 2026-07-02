@@ -192,10 +192,62 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener(async (info) => {
   sendMessageToSidePanel({ type: 'RRB_BLOCKED', total, session: rrbSessionBlocked });
 });
 
+// ── Unlock Right-Click & Copy ────────────────────────────────────
+// Re-enables right-click, selection, copy and shortcuts on pages that block them.
+
+const UNLOCK_SCRIPT_ID = 'htsp-unlock-right-click';
+const UNLOCK_FILES = ['unlock-right-click/unlock-content.js'];
+
+async function setUnlockEnabled(enabled) {
+  // Always clear any existing registration first to avoid duplicate-id errors.
+  try {
+    const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [UNLOCK_SCRIPT_ID] });
+    if (existing.length) {
+      await chrome.scripting.unregisterContentScripts({ ids: [UNLOCK_SCRIPT_ID] });
+    }
+  } catch (e) { /* nothing registered yet */ }
+
+  if (!enabled) return;
+
+  await chrome.scripting.registerContentScripts([{
+    id: UNLOCK_SCRIPT_ID,
+    matches: ['<all_urls>'],
+    js: UNLOCK_FILES,
+    runAt: 'document_start',
+    world: 'MAIN',
+    allFrames: true
+  }]);
+
+  // Also inject into already-open tabs so the toggle takes effect immediately.
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https?:/.test(tab.url)) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: UNLOCK_FILES,
+        world: 'MAIN'
+      });
+    } catch (e) { /* restricted page, ignore */ }
+  }
+}
+
+async function restoreUnlockState() {
+  const data = await chrome.storage.local.get('unlockRightClick');
+  await setUnlockEnabled(!!data.unlockRightClick);
+}
+
+chrome.runtime.onStartup.addListener(restoreUnlockState);
+chrome.runtime.onInstalled.addListener(restoreUnlockState);
+
 // Handle toggle from side panel
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'RRB_SET_ENABLED') {
     setRrbRule(msg.enabled).then(() => sendResponse({ ok: true }));
+    return true; // keep channel open for async response
+  }
+  if (msg.type === 'UNLOCK_SET_ENABLED') {
+    setUnlockEnabled(msg.enabled).then(() => sendResponse({ ok: true }));
     return true; // keep channel open for async response
   }
 });
