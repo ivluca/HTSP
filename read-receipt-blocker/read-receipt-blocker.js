@@ -5,6 +5,7 @@ let blockedCount = 0;
 let sessionBlocked = 0;
 let isEnabled = false;
 let isTypingBlocked = false;
+let isUnlockEnabled = false;
 
 // ── Feature Manager ─────────────────────────────────────────────────────────
 const FEATURES = [
@@ -47,9 +48,10 @@ async function setFeatureEnabled(featureId, enabled) {
 }
 
 async function loadState() {
-  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked']);
+  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked', 'unlockRightClick']);
   isEnabled = data.rrbEnabled ?? false;
   isTypingBlocked = data.typingBlocked ?? false;
+  isUnlockEnabled = data.unlockRightClick ?? false;
   blockedCount = data.rrbBlockedTotal ?? 0;
   renderPanel();
 }
@@ -65,6 +67,13 @@ async function setTypingBlocked(val) {
   isTypingBlocked = val;
   await chrome.storage.local.set({ typingBlocked: val });
   // The content script will dynamically read this state via storage changes
+  renderPanel();
+}
+
+async function setUnlockEnabled(val) {
+  isUnlockEnabled = val;
+  await chrome.storage.local.set({ unlockRightClick: val });
+  chrome.runtime.sendMessage({ type: 'UNLOCK_SET_ENABLED', enabled: val }).catch(() => {});
   renderPanel();
 }
 
@@ -225,6 +234,20 @@ async function renderPanel() {
         </div>
       </div>
 
+      <div class="setting-section-header">Browsing</div>
+      <div class="setting-section-card">
+        <div class="setting-item">
+          <div class="setting-text">
+            <div class="setting-title">Unlock Right-Click & Copy</div>
+            <div class="setting-desc">Re-enable right-click, text selection, copy, and keyboard shortcuts on pages that block them</div>
+          </div>
+          <label class="rrb-switch">
+            <input type="checkbox" id="unlock-toggle" ${isUnlockEnabled ? 'checked' : ''}>
+            <span class="rrb-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <div class="setting-section-header">Tab Manager</div>
       <div class="setting-section-card">
         <div class="setting-item dedupe-setting">
@@ -254,6 +277,9 @@ async function renderPanel() {
   });
   document.getElementById('typing-toggle').addEventListener('change', (e) => {
     setTypingBlocked(e.target.checked);
+  });
+  document.getElementById('unlock-toggle').addEventListener('change', (e) => {
+    setUnlockEnabled(e.target.checked);
   });
 
   // Dedupe pattern handlers
@@ -304,14 +330,16 @@ async function renderPanel() {
 
     await chrome.storage.local.remove([
       'rrbEnabled', 'rrbBlockedTotal', 'typingBlocked',
-      'dedupePatterns', 'htspFeatures'
+      'dedupePatterns', 'htspFeatures', 'unlockRightClick'
     ]);
     isEnabled = false;
     isTypingBlocked = false;
+    isUnlockEnabled = false;
     dedupePatterns = [];
     blockedCount = 0;
     sessionBlocked = 0;
     chrome.runtime.sendMessage({ type: 'RRB_SET_ENABLED', enabled: false }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'UNLOCK_SET_ENABLED', enabled: false }).catch(() => {});
     await loadFeatureStates();
     renderPanel();
   });
