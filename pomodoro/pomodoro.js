@@ -220,8 +220,12 @@
     running = true;
     updatePlayIcon();
 
+    // Derive remaining time from a fixed end timestamp rather than decrementing
+    // a counter, so the countdown stays accurate even if Chrome throttles the
+    // 1s interval while the side panel is inactive/backgrounded.
+    const endTime = Date.now() + remaining * 1000;
     timerId = setInterval(() => {
-      remaining--;
+      remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
       updateDisplay();
 
       if (remaining <= 0) {

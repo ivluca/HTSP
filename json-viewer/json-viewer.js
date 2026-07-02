@@ -11,6 +11,11 @@
   // ── DOM refs (populated after DOMContentLoaded) ───────────────────────────
   let container, outputArea, input, errorBar, clearBtn, searchInput, searchCountEl;
 
+  const debounce = (fn, delay) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+  };
+
   function init() {
     container     = document.getElementById('json-viewer-container');
     outputArea    = document.getElementById('jv-output-area');
@@ -22,13 +27,13 @@
 
     if (!container) return;
 
-    // Search event
+    // Search event (debounced so the full tree isn't rebuilt on every keystroke)
     if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        searchTerm = e.target.value.toLowerCase();
+      const runSearch = () => {
+        searchTerm = searchInput.value.toLowerCase();
         if (currentJson !== null) {
           renderTree(currentJson);
-          
+
           searchResults = Array.from(outputArea.querySelectorAll('.jv-highlight'));
           currentSearchIndex = -1;
           if (searchResults.length > 0 && searchTerm) {
@@ -37,7 +42,8 @@
             updateSearchCount();
           }
         }
-      });
+      };
+      searchInput.addEventListener('input', debounce(runSearch, 150));
 
       searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
