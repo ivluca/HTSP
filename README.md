@@ -18,6 +18,12 @@ Prevents senders from knowing when you have read their messages or when you are 
 - **Optimistic UI:** Fakes a successful HTTP 200 response so that the chat appears "Read" locally to the user, preventing UI glitches, while remaining "Unread" to the sender.
 - **Isolated Injection:** Uses an isolated content script bridge and main-world interceptor to transparently modify the `window.fetch` and `XMLHttpRequest` APIs.
 
+### Save Image As (Right-Click Menu)
+Adds a "Save image as" entry to the browser's right-click menu on any image, with format conversion.
+- **Format Choice:** Sub-menu to re-encode the image as PNG, JPEG, or WebP before saving.
+- **In-Worker Conversion:** Fetches the image bytes and re-encodes them via `OffscreenCanvas` / `createImageBitmap` in the service worker (no tainted-canvas issues); JPEG output is flattened onto a white background.
+- **One-Click Save:** Downloads straight to the default downloads folder through `chrome.downloads` (no Save-As prompt), using a sanitized filename derived from the source URL.
+
 ### Unlock Right-Click & Copy (Options Tab)
 Re-enables right-click, text selection, copy/cut/paste, and Ctrl/Cmd keyboard shortcuts on pages that block them.
 - **Early Interception:** Registers a `document_start` MAIN-world content script whose capture-phase listeners fire before the page's own blockers, stopping them without suppressing the browser's default behavior.
