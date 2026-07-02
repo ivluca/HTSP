@@ -251,3 +251,90 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true; // keep channel open for async response
   }
 });
+
+// ── Save Image As (with format conversion) ───────────────────────
+// Adds a right-click "Save image as" menu on images, letting the user
+// re-encode to PNG / JPEG / WebP before downloading.
+
+const IMAGE_FORMATS = [
+  { id: 'png',  label: 'PNG',  mime: 'image/png',  ext: 'png' },
+  { id: 'jpeg', label: 'JPEG', mime: 'image/jpeg', ext: 'jpg' },
+  { id: 'webp', label: 'WebP', mime: 'image/webp', ext: 'webp' }
+];
+
+function createImageContextMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'htsp-save-image-as',
+      title: 'Save image as',
+      contexts: ['image']
+    });
+    IMAGE_FORMATS.forEach(fmt => {
+      chrome.contextMenus.create({
+        id: `htsp-save-image-${fmt.id}`,
+        parentId: 'htsp-save-image-as',
+        title: fmt.label,
+        contexts: ['image']
+      });
+    });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(createImageContextMenus);
+chrome.runtime.onStartup.addListener(createImageContextMenus);
+
+function buildImageFilename(srcUrl, ext) {
+  let base = 'image';
+  try {
+    const name = new URL(srcUrl).pathname.split('/').pop() || '';
+    base = name.replace(/\.[^.]+$/, '') || 'image';
+  } catch (_) { /* keep default */ }
+  base = decodeURIComponent(base).replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 100) || 'image';
+  return `${base}.${ext}`;
+}
+
+async function blobToDataUrl(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return `data:${blob.type};base64,${btoa(binary)}`;
+}
+
+async function saveImageAs(srcUrl, fmt) {
+  const resp = await fetch(srcUrl);
+  if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+  const srcBlob = await resp.blob();
+
+  const bitmap = await createImageBitmap(srcBlob);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d');
+  // JPEG has no alpha channel — flatten transparency onto white.
+  if (fmt.mime === 'image/jpeg') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+
+  const outBlob = await canvas.convertToBlob({ type: fmt.mime, quality: 0.92 });
+  const dataUrl = await blobToDataUrl(outBlob);
+
+  await chrome.downloads.download({
+    url: dataUrl,
+    filename: buildImageFilename(srcUrl, fmt.ext),
+    saveAs: false
+  });
+}
+
+chrome.contextMenus.onClicked.addListener(async (info) => {
+  const fmt = IMAGE_FORMATS.find(f => info.menuItemId === `htsp-save-image-${f.id}`);
+  if (!fmt || !info.srcUrl) return;
+  try {
+    await saveImageAs(info.srcUrl, fmt);
+  } catch (e) {
+    console.error('Save image as failed:', e);
+  }
+});
