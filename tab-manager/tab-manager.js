@@ -361,8 +361,13 @@ function createTabItem(tab, displayTitle) {
       if (e.target.closest('.action-btn')) return;
       selectedTabs.clear();
       selectedTabs.add(currentTabId);
-      await chrome.tabs.update(currentTabId, { active: true });
-      await chrome.windows.update(tab.windowId, { focused: true });
+      try {
+        await chrome.tabs.update(currentTabId, { active: true });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      } catch (err) {
+        // Tab or window was closed after the cache was rendered — drop the stale entry.
+        selectedTabs.delete(currentTabId);
+      }
     }
     
     lastClickedTabId = currentTabId;
@@ -398,7 +403,15 @@ function createTabItem(tab, displayTitle) {
   }
   
   const favicon = document.createElement('img');
-  favicon.src = tab.favIconUrl || 'images/icon.png';
+  const favUrl = tab.favIconUrl;
+  // Favicons of other extensions are chrome-extension:// URLs we are not allowed
+  // to load (web_accessible_resources of THAT extension) — use our fallback icon.
+  const isBlockedFavicon = favUrl && favUrl.startsWith('chrome-extension://') && !favUrl.startsWith(chrome.runtime.getURL(''));
+  favicon.src = (favUrl && !isBlockedFavicon) ? favUrl : 'images/icon.png';
+  favicon.onerror = () => {
+    favicon.onerror = null;
+    favicon.src = 'images/icon.png';
+  };
   clickablePart.appendChild(favicon);
 
   const title = document.createElement('span');
@@ -412,7 +425,11 @@ function createTabItem(tab, displayTitle) {
   actions.classList.add('browser-tab-actions');
 
   const closeBtn = createActionButton('close', false, async () => {
-    await chrome.tabs.remove(tab.id);
+    try {
+      await chrome.tabs.remove(tab.id);
+    } catch (err) {
+      // Tab was already closed elsewhere — nothing to do, the list refresh will drop it.
+    }
     selectedTabs.delete(tab.id);
   });
 
@@ -511,7 +528,9 @@ async function showContextMenu(x, y) {
   menu.className = 'context-menu';
 
   const selectedTabIdsArray = Array.from(selectedTabs);
-  const tabsInfo = await Promise.all(selectedTabIdsArray.map(tabId => chrome.tabs.get(tabId)));
+  const tabsInfo = (await Promise.all(
+    selectedTabIdsArray.map(tabId => chrome.tabs.get(tabId).catch(() => null))
+  )).filter(Boolean);
   const hasGroupedTabs = tabsInfo.some(tab => tab.groupId !== -1);
 
   const actions = [
