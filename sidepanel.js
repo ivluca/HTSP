@@ -70,11 +70,6 @@ function switchTab(targetId) {
   const target = document.getElementById(targetId);
   if (target) {
     target.classList.remove('hidden');
-    // Lazy-load external AI iframes: only fetch the site the first time its
-    // tab is opened, so the panel doesn't load chatgpt/gemini on every open.
-    if (target.tagName === 'IFRAME' && !target.src && target.dataset.src) {
-      target.src = target.dataset.src;
-    }
   }
 
   if (dropdownContent) dropdownContent.classList.remove('show');
@@ -86,6 +81,7 @@ function switchTab(targetId) {
     if (typeof loadState === 'function') loadState();
   }
 
+
   allTabs.forEach(t => {
     if (t.dataset.target === targetId) {
       t.classList.add('active');
@@ -95,6 +91,7 @@ function switchTab(targetId) {
     }
   });
 }
+
 
 function setupEventListeners() {
   const tabsContainer = document.querySelector('.tabs');
@@ -176,6 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // tab cache while someone is actually viewing it. The port stays open for the
   // panel's lifetime and disconnects automatically when the panel closes.
   try { chrome.runtime.connect({ name: 'htsp-panel' }); } catch (e) { /* ignore */ }
+
+  // Eagerly load all AI iframes in the background so they are ready
+  // immediately when the user clicks their tab — no cold-load wait.
+  document.querySelectorAll('iframe[data-src]').forEach(frame => {
+    if (!frame.src) frame.src = frame.dataset.src;
+  });
 });
 
 chrome.runtime.onMessage.addListener((request) => {
