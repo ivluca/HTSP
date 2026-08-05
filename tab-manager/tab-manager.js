@@ -163,30 +163,39 @@ function requestRenderBrowserTabs() {
   renderTimeout = setTimeout(() => renderBrowserTabs(searchTerm).catch(console.error), 50);
 }
 
+let headerInitialised = false;
+
 async function renderBrowserTabs(filter = '') {
   const container = document.getElementById('window-groups-container');
-  
+
+  // Bail out early before any async work when the tab manager isn't visible.
+  if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
+
   // Only show loader on the very first load.
   if (!container.hasChildNodes()) {
     container.innerHTML = '<div class="loader">Loading...</div>';
   }
 
-  if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
-
-  const cachedState = await chrome.storage.session.get('tabCache');
+  // Read both storage keys in parallel to avoid sequential async delays.
+  const [cachedState, storage] = await Promise.all([
+    chrome.storage.session.get('tabCache'),
+    chrome.storage.local.get(['collapsedGroups'])
+  ]);
   const { windows: allWindows, tabGroups: allTabGroups } = cachedState.tabCache || { windows: [], tabGroups: [] };
-
-  const storage = await chrome.storage.local.get(['collapsedGroups']);
 
   if (storage.collapsedGroups) {
     collapsedGroups.clear();
     storage.collapsedGroups.forEach(id => collapsedGroups.add(id));
   }
 
+  // Build the header only once — subsequent renders just toggle button state.
+  if (!headerInitialised) {
+    setupTabManagerHeader();
+    headerInitialised = true;
+  }
+
   const groupMap = new Map(allTabGroups.map(group => [group.id, group]));
   const lowerCaseFilter = filter.toLowerCase();
-  
-  setupTabManagerHeader();
 
   const allTabs = allWindows.reduce((acc, win) => acc.concat(win.tabs || []), []);
 
@@ -543,16 +552,15 @@ async function showContextMenu(x, y) {
       }
     },
     { label: 'Pin/Unpin', icon: 'pin', action: async () => {
-        for (const tabId of selectedTabs) {
-          const tab = await chrome.tabs.get(tabId);
-          await chrome.tabs.update(tabId, { pinned: !tab.pinned });
-        }
+        await Promise.all(
+          tabsInfo.map(tab => chrome.tabs.update(tab.id, { pinned: !tab.pinned }))
+        );
       }
     },
     { label: 'Reload', icon: 'reload', action: async () => {
-        for (const tabId of selectedTabs) {
-          await chrome.tabs.reload(tabId);
-        }
+        await Promise.all(
+          Array.from(selectedTabs).map(tabId => chrome.tabs.reload(tabId))
+        );
       }
     },
     { label: 'Show/Hide Title', icon: 'eye', action: async () => {

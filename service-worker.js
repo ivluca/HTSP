@@ -85,6 +85,23 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         requestDomains: ["accounts.google.com"],
         resourceTypes: ["main_frame", "sub_frame"]
       }
+    },
+    {
+      id: 4,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        responseHeaders: [
+          { header: "x-frame-options", operation: "remove" },
+          { header: "frame-options", operation: "remove" },
+          { header: "frame-ancestors", operation: "remove" },
+          { header: "content-security-policy", operation: "remove" }
+        ]
+      },
+      condition: {
+        requestDomains: ["claude.ai"],
+        resourceTypes: ["main_frame", "sub_frame"]
+      }
     }
   ];
   const existingRules = await chrome.declarativeNetRequest.getDynamicRules();

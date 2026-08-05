@@ -1,6 +1,6 @@
 {
   "name": "HTSP",
-  "version": "3.8.1",
+  "version": "3.9.0",
   "manifest_version": 3,
   "description": "Help Tools Side Panel",
   "host_permissions": [
@@ -13,6 +13,7 @@
     "*://accounts.google.com/*",
     "*://gemini.google.com/*",
     "*://chat.googleapis.com/*",
+    "*://claude.ai/*",
     "<all_urls>"
   ],
   "permissions": [
@@ -45,7 +46,7 @@
     "minimum_width": 324
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/;"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/ https://claude.ai/;"
   },
   "content_scripts": [
     {
@@ -59,6 +60,13 @@
       "js": ["read-receipt-blocker/content-script-bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["claude-frame-fix.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
     }
   ]
 }

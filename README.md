@@ -46,7 +46,7 @@ Tooling for managing open browser tabs from the Side Panel.
 - **Copy Window Links:** Each window section has a copy button that copies the links of the tabs in that window only (never all open tabs).
 
 ### AI Workspaces
-- Embeds ChatGPT and Gemini web interfaces as internal frames within the Side Panel.
+- Embeds ChatGPT, Gemini, and Claude web interfaces as internal frames within the Side Panel.
 - Viewports are styled to fit the constraints of the Chrome Side Panel dimension limits.
 
 ### JSON Viewer
@@ -66,7 +66,7 @@ Manage all your installed Chrome extensions directly from the Side Panel.
 
 ### Feature Manager (Options Tab)
 Customize which features are visible in the Side Panel.
-- **Per-Feature Toggles:** Enable or disable individual tabs (Tab Manager, ChatGPT, Gemini, Media Downloader, JSON Viewer, Extensions).
+- **Per-Feature Toggles:** Enable or disable individual tabs (Tab Manager, ChatGPT, Gemini, Claude, Media Downloader, JSON Viewer, Extensions).
 - **Persistent Settings:** Preferences are saved via `chrome.storage.local` and survive browser restarts.
 - **Auto-Fallback:** If the active tab is disabled, the panel automatically switches to the first available tab.
 

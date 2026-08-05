@@ -12,6 +12,7 @@ const FEATURES = [
   { id: 'tab-manager-container', label: 'Tab Manager' },
   { id: 'chatgpt-frame',         label: 'ChatGPT' },
   { id: 'gemini-frame',          label: 'Gemini' },
+  { id: 'claude-frame',          label: 'Claude' },
   { id: 'media-downloader-container', label: 'Media Downloader' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
   { id: 'ext-manager-container', label: 'Extensions' },
