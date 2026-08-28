@@ -34,6 +34,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await updateCache();
   
   // Also set up the declarativeNetRequest rules
+  // All four AI sites need the same headers removed to allow iframe embedding.
+  // Use a single rule with a combined domain list instead of four separate rules.
   const rules = [
     {
       id: 1,
@@ -48,58 +50,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         ]
       },
       condition: {
-        requestDomains: ["chat.openai.com", "chatgpt.com", "openai.com"],
-        resourceTypes: ["main_frame", "sub_frame"]
-      }
-    },
-    {
-      id: 2,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        responseHeaders: [
-          { header: "x-frame-options", operation: "remove" },
-          { header: "frame-options", operation: "remove" },
-          { header: "frame-ancestors", operation: "remove" },
-          { header: "content-security-policy", operation: "remove" }
-        ]
-      },
-      condition: {
-        requestDomains: ["gemini.google.com"],
-        resourceTypes: ["main_frame", "sub_frame"]
-      }
-    },
-    {
-      id: 3,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        responseHeaders: [
-          { header: "x-frame-options", operation: "remove" },
-          { header: "frame-options", operation: "remove" },
-          { header: "frame-ancestors", operation: "remove" },
-          { header: "content-security-policy", operation: "remove" }
-        ]
-      },
-      condition: {
-        requestDomains: ["accounts.google.com"],
-        resourceTypes: ["main_frame", "sub_frame"]
-      }
-    },
-    {
-      id: 4,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        responseHeaders: [
-          { header: "x-frame-options", operation: "remove" },
-          { header: "frame-options", operation: "remove" },
-          { header: "frame-ancestors", operation: "remove" },
-          { header: "content-security-policy", operation: "remove" }
-        ]
-      },
-      condition: {
-        requestDomains: ["claude.ai"],
+        requestDomains: [
+          "chat.openai.com", "chatgpt.com", "openai.com",
+          "gemini.google.com",
+          "accounts.google.com"
+        ],
         resourceTypes: ["main_frame", "sub_frame"]
       }
     }
@@ -178,9 +133,9 @@ chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
 
-// ── Read Receipt Blocker ─────────────────────────────────────────
+/* ── GOOGLE CHAT (Read Receipt Blocker) — tạm thời tắt ──────────────────────
 
-const RRB_RULE_ID = 100; // unique ID, separate from header-mod rules (1-3)
+const RRB_RULE_ID = 100;
 let rrbSessionBlocked = 0;
 
 async function setRrbRule(enabled) {
@@ -192,7 +147,7 @@ async function setRrbRule(enabled) {
         priority: 10,
         action: { type: 'block' },
         condition: {
-          urlFilter: '*chat.googleapis.com/v1/users/*/spaces/*/spaceReadState*',
+          urlFilter: '*chat.googleapis.com/v1/users/* /spaces/* /spaceReadState*',
           requestMethods: ['patch'],
           resourceTypes: ['xmlhttprequest']
         }
@@ -205,7 +160,6 @@ async function setRrbRule(enabled) {
   }
 }
 
-// Restore RRB rule on startup based on saved state
 chrome.runtime.onStartup.addListener(async () => {
   const data = await chrome.storage.local.get('rrbEnabled');
   if (data.rrbEnabled) await setRrbRule(true);
@@ -216,7 +170,6 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (data.rrbEnabled) await setRrbRule(true);
 });
 
-// Track blocked requests and notify side panel
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener(async (info) => {
   if (info.rule.ruleId !== RRB_RULE_ID) return;
   rrbSessionBlocked++;
@@ -226,65 +179,14 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener(async (info) => {
   sendMessageToSidePanel({ type: 'RRB_BLOCKED', total, session: rrbSessionBlocked });
 });
 
-// ── Unlock Right-Click & Copy ────────────────────────────────────
-// Re-enables right-click, selection, copy and shortcuts on pages that block them.
-
-const UNLOCK_SCRIPT_ID = 'htsp-unlock-right-click';
-const UNLOCK_FILES = ['unlock-right-click/unlock-content.js'];
-
-async function setUnlockEnabled(enabled) {
-  // Always clear any existing registration first to avoid duplicate-id errors.
-  try {
-    const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [UNLOCK_SCRIPT_ID] });
-    if (existing.length) {
-      await chrome.scripting.unregisterContentScripts({ ids: [UNLOCK_SCRIPT_ID] });
-    }
-  } catch (e) { /* nothing registered yet */ }
-
-  if (!enabled) return;
-
-  await chrome.scripting.registerContentScripts([{
-    id: UNLOCK_SCRIPT_ID,
-    matches: ['<all_urls>'],
-    js: UNLOCK_FILES,
-    runAt: 'document_start',
-    world: 'MAIN',
-    allFrames: true
-  }]);
-
-  // Also inject into already-open tabs so the toggle takes effect immediately.
-  const tabs = await chrome.tabs.query({});
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url || !/^https?:/.test(tab.url)) continue;
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: true },
-        files: UNLOCK_FILES,
-        world: 'MAIN'
-      });
-    } catch (e) { /* restricted page, ignore */ }
-  }
-}
-
-async function restoreUnlockState() {
-  const data = await chrome.storage.local.get('unlockRightClick');
-  await setUnlockEnabled(!!data.unlockRightClick);
-}
-
-chrome.runtime.onStartup.addListener(restoreUnlockState);
-chrome.runtime.onInstalled.addListener(restoreUnlockState);
-
-// Handle toggle from side panel
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'RRB_SET_ENABLED') {
     setRrbRule(msg.enabled).then(() => sendResponse({ ok: true }));
-    return true; // keep channel open for async response
-  }
-  if (msg.type === 'UNLOCK_SET_ENABLED') {
-    setUnlockEnabled(msg.enabled).then(() => sendResponse({ ok: true }));
-    return true; // keep channel open for async response
+    return true;
   }
 });
+
+*/
 
 // ── Save Image As (with format conversion) ───────────────────────
 // Adds a right-click "Save image as" menu on images, letting the user
@@ -370,5 +272,18 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     await saveImageAs(info.srcUrl, fmt);
   } catch (e) {
     console.error('Save image as failed:', e);
+  }
+});
+
+// ── Force cache rebuild (requested by tab-manager after bulk mutations) ───────
+// The normal path relies on the debounced tab-event listeners which can be
+// too slow or miss events when many tabs change at once (merge / dedupe).
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'FORCE_CACHE_REBUILD') {
+    updateCache()
+      .then(() => sendMessageToSidePanel({ type: 'CACHE_UPDATED' }))
+      .catch(console.error);
+    sendResponse({ ok: true });
+    return false;
   }
 });

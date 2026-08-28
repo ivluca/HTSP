@@ -167,9 +167,8 @@
 
   function getIconUrl(ext) {
     if (ext.icons && ext.icons.length > 0) {
-      // Get largest icon
-      const sorted = [...ext.icons].sort((a, b) => b.size - a.size);
-      return sorted[0].url;
+      // Find the largest icon in one pass instead of sorting the whole array.
+      return ext.icons.reduce((best, icon) => icon.size > best.size ? icon : best).url;
     }
     return null;
   }

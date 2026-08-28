@@ -1,22 +1,14 @@
 // Read Receipt Blocker for Google Chat
-// Stores blocked count and enabled state in chrome.storage.local
-
-let blockedCount = 0;
-let sessionBlocked = 0;
-let isEnabled = false;
-let isTypingBlocked = false;
-let isUnlockEnabled = false;
+// ── GOOGLE CHAT state — tạm thời tắt (giữ khai báo để tránh lỗi template literal)
+let blockedCount = 0, sessionBlocked = 0, isEnabled = false, isTypingBlocked = false;
 
 // ── Feature Manager ─────────────────────────────────────────────────────────
 const FEATURES = [
   { id: 'tab-manager-container', label: 'Tab Manager' },
   { id: 'chatgpt-frame',         label: 'ChatGPT' },
   { id: 'gemini-frame',          label: 'Gemini' },
-  { id: 'claude-frame',          label: 'Claude' },
-  { id: 'media-downloader-container', label: 'Media Downloader' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
   { id: 'ext-manager-container', label: 'Extensions' },
-  { id: 'pomodoro-container',    label: 'Pomodoro' },
 ];
 
 async function loadFeatureStates() {
@@ -48,11 +40,11 @@ async function setFeatureEnabled(featureId, enabled) {
   await loadFeatureStates();
 }
 
+/* ── GOOGLE CHAT functions — tạm thời tắt
 async function loadState() {
-  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked', 'unlockRightClick']);
+  const data = await chrome.storage.local.get(['rrbEnabled', 'rrbBlockedTotal', 'typingBlocked']);
   isEnabled = data.rrbEnabled ?? false;
   isTypingBlocked = data.typingBlocked ?? false;
-  isUnlockEnabled = data.unlockRightClick ?? false;
   blockedCount = data.rrbBlockedTotal ?? 0;
   renderPanel();
 }
@@ -71,12 +63,6 @@ async function setTypingBlocked(val) {
   renderPanel();
 }
 
-async function setUnlockEnabled(val) {
-  isUnlockEnabled = val;
-  await chrome.storage.local.set({ unlockRightClick: val });
-  chrome.runtime.sendMessage({ type: 'UNLOCK_SET_ENABLED', enabled: val }).catch(() => {});
-  renderPanel();
-}
 
 async function resetStats() {
   blockedCount = 0;
@@ -84,6 +70,7 @@ async function resetStats() {
   await chrome.storage.local.set({ rrbBlockedTotal: 0 });
   renderPanel();
 }
+*/
 
 // ── Tab Manager Settings ────────────────────────────────────────────────────
 let dedupePatterns = [];
@@ -211,6 +198,7 @@ async function renderPanel() {
 
   container.innerHTML = `
     <div class="setting-list">
+      <!-- GOOGLE CHAT section tạm thời tắt
       <div class="setting-section-header">Google Chat</div>
       <div class="setting-section-card">
         <div class="setting-item">
@@ -234,20 +222,7 @@ async function renderPanel() {
           </label>
         </div>
       </div>
-
-      <div class="setting-section-header">Browsing</div>
-      <div class="setting-section-card">
-        <div class="setting-item">
-          <div class="setting-text">
-            <div class="setting-title">Unlock Right-Click & Copy</div>
-            <div class="setting-desc">Re-enable right-click, text selection, copy, and keyboard shortcuts on pages that block them</div>
-          </div>
-          <label class="rrb-switch">
-            <input type="checkbox" id="unlock-toggle" ${isUnlockEnabled ? 'checked' : ''}>
-            <span class="rrb-slider"></span>
-          </label>
-        </div>
-      </div>
+      -->
 
       <div class="setting-section-header">Tab Manager</div>
       <div class="setting-section-card">
@@ -273,15 +248,14 @@ async function renderPanel() {
     </div>
   `;
 
+  /* ── GOOGLE CHAT event listeners — tạm thời tắt
   document.getElementById('rrb-toggle').addEventListener('change', (e) => {
     setEnabled(e.target.checked);
   });
   document.getElementById('typing-toggle').addEventListener('change', (e) => {
     setTypingBlocked(e.target.checked);
   });
-  document.getElementById('unlock-toggle').addEventListener('change', (e) => {
-    setUnlockEnabled(e.target.checked);
-  });
+  */
 
   // Dedupe pattern handlers
   const dedupeInput = document.getElementById('dedupe-pattern-input');
@@ -330,23 +304,18 @@ async function renderPanel() {
     }
 
     await chrome.storage.local.remove([
-      'rrbEnabled', 'rrbBlockedTotal', 'typingBlocked',
-      'dedupePatterns', 'htspFeatures', 'unlockRightClick'
+      /* 'rrbEnabled', 'rrbBlockedTotal', 'typingBlocked', */ // GOOGLE CHAT — tạm thời tắt
+      'dedupePatterns', 'htspFeatures'
     ]);
-    isEnabled = false;
-    isTypingBlocked = false;
-    isUnlockEnabled = false;
     dedupePatterns = [];
-    blockedCount = 0;
-    sessionBlocked = 0;
-    chrome.runtime.sendMessage({ type: 'RRB_SET_ENABLED', enabled: false }).catch(() => {});
-    chrome.runtime.sendMessage({ type: 'UNLOCK_SET_ENABLED', enabled: false }).catch(() => {});
+    /* isEnabled = false; isTypingBlocked = false; blockedCount = 0; sessionBlocked = 0;
+    chrome.runtime.sendMessage({ type: 'RRB_SET_ENABLED', enabled: false }).catch(() => {}); */ // GOOGLE CHAT — tạm thời tắt
     await loadFeatureStates();
     renderPanel();
   });
 }
 
-// Listen for blocked-count updates from service worker
+/* ── GOOGLE CHAT message listener — tạm thời tắt
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'RRB_BLOCKED') {
     blockedCount = msg.total;
@@ -357,10 +326,12 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (sessionEl) sessionEl.textContent = sessionBlocked;
   }
 });
+*/
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadDedupePatterns();
-  await loadState();
+  // await loadState(); // GOOGLE CHAT — tạm thời tắt
   await loadFeatureStates();
+  await renderPanel(); // gọi trực tiếp vì loadState đã tắt
 });
 
