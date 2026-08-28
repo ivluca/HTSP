@@ -8,7 +8,6 @@ const FEATURES = [
   { id: 'chatgpt-frame',         label: 'ChatGPT' },
   { id: 'gemini-frame',          label: 'Gemini' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
-  { id: 'ext-manager-container', label: 'Extensions' },
 ];
 
 async function loadFeatureStates() {
