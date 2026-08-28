@@ -40,6 +40,10 @@ async function mergeAllWindows() {
       }
     }
   }
+
+  // Force an immediate re-render after all moves complete — the debounced
+  // service-worker events may arrive late or be coalesced, causing stale UI.
+  await forceRefreshRender();
 }
 
 async function closeDuplicateTabs() {
@@ -92,6 +96,10 @@ async function closeDuplicateTabs() {
   if (tabsToClose.length === 0) return;
 
   await chrome.tabs.remove(tabsToClose);
+
+  // Force an immediate re-render — duplicate closures fire many tab events
+  // simultaneously; the debounce may settle on stale cache data.
+  await forceRefreshRender();
 }
 
 /**
@@ -156,6 +164,34 @@ function setupTabManagerHeader() {
 
   actions.append(mergeBtn, dedupeBtn, showLinksBtn, groupBtn);
   tabManagerHeader.append(title, actions);
+}
+
+/**
+ * Rebuilds the session cache from scratch (bypassing the debounce in the
+ * service worker) then re-renders the tab list.
+ * Used after bulk mutations (merge windows, close duplicates) where the
+ * normal debounced CACHE_UPDATED message can arrive too late or be skipped.
+ */
+async function forceRefreshRender() {
+  // Ask the service worker to rebuild the cache synchronously and wait for
+  // the acknowledgement before rendering so we always paint fresh data.
+  await new Promise((resolve) => {
+    const listener = (msg) => {
+      if (msg.type === 'CACHE_UPDATED') {
+        chrome.runtime.onMessage.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    // Trigger an immediate cache rebuild in the service worker.
+    chrome.runtime.sendMessage({ type: 'FORCE_CACHE_REBUILD' }).catch(() => {});
+    // Safety timeout: if no acknowledgement arrives within 1 s, render anyway.
+    setTimeout(() => {
+      chrome.runtime.onMessage.removeListener(listener);
+      resolve();
+    }, 1000);
+  });
+  requestRenderBrowserTabs();
 }
 
 function requestRenderBrowserTabs() {
