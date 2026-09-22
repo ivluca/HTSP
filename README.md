@@ -1,66 +1,102 @@
+<div align="center">
+
+<img src="images/icon.png" width="80" alt="HTSP Logo" />
+
 # HTSP — Help Tools Side Panel
 
-**HTSP** is a Chrome extension that brings tab management, AI tools, and developer utilities into the browser's native Side Panel.
+**A Chrome extension that supercharges your browser's native Side Panel**  
+with a powerful Tab Manager, AI workspace, JSON viewer, and more.
+
+[![Version](https://img.shields.io/badge/version-3.9.0-6366f1?style=flat-square)](https://github.com/ivluca/HTSP)
+[![Manifest](https://img.shields.io/badge/Manifest-V3-brightgreen?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+
+</div>
 
 ---
 
-## Features (v3.9)
+## ✨ Features
 
-### Tab Manager
-A full-featured tab manager built directly into the side panel.
+### 🗂️ Tab Manager
 
-- **Overview:** Lists all open tabs across every window, grouped into Pinned, Tab Groups, and per-Window sections.
-- **Search:** Instant filtering across tab titles and URLs.
-- **Selection:** Click to switch, Ctrl-click for multi-select, Shift-click for range select.
-- **Actions:** Close, Pin/Unpin, Reload, Show/Hide title, Group, Ungroup — available via row buttons and right-click context menu.
-- **Tab Groups:** Create, collapse/expand, and ungroup Chrome tab groups with color support.
-- **Merge Windows:** Move all tabs from every other window into the current one with one click.
-- **Close Duplicates:** Automatically closes duplicate tabs (keeps the most recently accessed). Supports custom URL-pattern rules for smart deduplication (e.g. group all `chat.google.com` tabs as duplicates regardless of query params).
-- **Copy Window Links:** Each window section has a button to copy all URLs in that window only.
-- **Real-time Updates:** The list stays in sync even after long idle periods (service worker restart), switching between panel sections, or returning from other apps.
+> The heart of HTSP — a full tab manager living right inside the side panel.
 
-### Gemini
-Embeds the Gemini web interface as an internal frame inside the Side Panel.
-
-### JSON Viewer
-An interactive JSON formatter and tree viewer.
-
-- Paste JSON and press **Enter** to format instantly.
-- Expand/collapse nested objects and arrays.
-- Search keys and values with `Enter` / `Shift+Enter` to cycle through matches.
-- One-click copy for any node (object, array, or primitive).
-
-### Save Image As (Right-Click)
-Adds a **Save image as** sub-menu to the browser's right-click menu on any image.
-
-- Re-encode to **PNG**, **JPEG**, or **WebP** before saving.
-- Conversion runs in the service worker via `OffscreenCanvas` — no tainted-canvas issues.
-- Downloads directly to the default folder with a sanitized filename.
-
-### Feature Manager (Options Tab)
-Control which tabs are visible in the Side Panel.
-
-- Toggle Tab Manager, Gemini, and JSON Viewer on or off.
-- Settings persist across browser restarts via `chrome.storage.local`.
-- If the active tab is hidden, the panel switches to the first available tab automatically.
-
-### Dedupe URL Patterns (Options Tab)
-Define custom URL keywords so that tabs matching the same pattern count as duplicates (ignoring query params, fragments, etc.).
+| Capability | Details |
+|---|---|
+| **Overview** | All tabs across every window, grouped into Pinned, Tab Groups, and per-Window sections |
+| **Search** | Instant real-time filtering across tab titles and URLs |
+| **Multi-Select** | Click · `Ctrl+Click` multi-select · `Shift+Click` range select |
+| **Actions** | Close, Pin/Unpin, Reload, Show/Hide, Group, Ungroup — via buttons or right-click menu |
+| **Tab Groups** | Create groups with colors, collapse/expand, ungroup in bulk |
+| **Merge Windows** | Pull all tabs from every other window into the current one in one click |
+| **Close Duplicates** | Closes duplicate tabs, keeping the most recently accessed |
+| **Smart Dedupe** | Custom URL patterns to treat tabs as duplicates regardless of query params |
+| **Copy Links** | Copy all URLs in a specific window with one click |
+| **Always in sync** | Stays accurate after long idle periods, app switches, or panel section changes |
 
 ---
 
-## Installation
+### 🤖 Gemini
 
-1. Clone this repository.
-2. Open Chrome → `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the project folder.
+Embeds Google Gemini directly inside the Side Panel — no tab switching needed.
 
-## Development
+---
 
-1. Load the folder as an unpacked extension.
-2. Make changes, then click **Reload** on the extension card in `chrome://extensions`.
+### 🔍 JSON Viewer
 
-## License
+> A clean, interactive JSON formatter for developers.
 
-MIT
+- Paste JSON → press **Enter** to format instantly
+- Expand / collapse nested objects and arrays
+- Search keys or values — cycle with `Enter` / `Shift+Enter`
+- One-click **copy** for any node, object, array, or primitive value
+
+---
+
+### 🖼️ Save Image As *(Right-Click)*
+
+Adds a **Save image as** sub-menu to the browser context menu on any image.
+
+- Re-encode to **PNG**, **JPEG**, or **WebP** before saving
+- Conversion via `OffscreenCanvas` in the service worker — no tainted-canvas issues
+- Downloads instantly with a clean filename derived from the source URL
+
+---
+
+### ⚙️ Options Tab
+
+| Setting | Description |
+|---|---|
+| **Feature Visibility** | Toggle Tab Manager, Gemini, and JSON Viewer on/off individually |
+| **Dedupe Patterns** | Define URL keywords for smart duplicate detection |
+| **Reset Settings** | One-click restore to defaults (with confirmation) |
+
+> Settings persist across browser restarts via `chrome.storage.local`.  
+> If the active tab is hidden, the panel automatically switches to the next available one.
+
+---
+
+## 🚀 Installation
+
+```
+1. Clone this repository
+2. Go to chrome://extensions
+3. Enable Developer mode (top right)
+4. Click "Load unpacked" → select the project folder
+```
+
+---
+
+## 🛠️ Development
+
+```
+1. Load the folder as an unpacked extension
+2. Edit source files
+3. Click Reload on the extension card in chrome://extensions
+```
+
+---
+
+## 📄 License
+
+MIT © [ivluca](https://github.com/ivluca)
