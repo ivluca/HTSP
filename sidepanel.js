@@ -75,7 +75,10 @@ function switchTab(targetId) {
   if (dropdownContent) dropdownContent.classList.remove('show');
 
   if (targetId === 'tab-manager-container') {
-    requestRenderBrowserTabs();
+    // Always force a full cache refresh when the user navigates to the tab
+    // manager so any events that arrived while it was hidden are reflected
+    // immediately, not from a potentially stale cache snapshot.
+    forceRefreshRender();
   }
   if (targetId === 'read-receipt-container') {
     if (typeof loadState === 'function') loadState();
@@ -169,15 +172,38 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   requestRenderBrowserTabs();
   checkColorScheme();
-  // Signal to the service worker that a panel is open so it only maintains the
-  // tab cache while someone is actually viewing it. The port stays open for the
-  // panel's lifetime and disconnects automatically when the panel closes.
-  try { chrome.runtime.connect({ name: 'htsp-panel' }); } catch (e) { /* ignore */ }
+  // Keep a persistent port open so the service worker knows the panel is
+  // active and doesn't skip cache rebuilds.  Chrome can kill the service
+  // worker after ~30 s of idle; when that happens the port disconnects.
+  // We reconnect immediately so panelConnections stays accurate in the
+  // freshly-woken service worker, and we force a cache refresh so the
+  // tab list is always up-to-date when the user returns to the panel.
+  function connectToServiceWorker() {
+    try {
+      const port = chrome.runtime.connect({ name: 'htsp-panel' });
+      port.onDisconnect.addListener(() => {
+        // Service worker was terminated — reconnect and refresh.
+        connectToServiceWorker();
+        forceRefreshRender();
+      });
+    } catch (e) { /* extension context invalidated — ignore */ }
+  }
+  connectToServiceWorker();
 
   // Eagerly load all AI iframes in the background so they are ready
   // immediately when the user clicks their tab — no cold-load wait.
   document.querySelectorAll('iframe[data-src]').forEach(frame => {
     if (!frame.src) frame.src = frame.dataset.src;
+  });
+
+  // Refresh the tab list when the user switches back to this window/panel
+  // after working elsewhere.  visibilitychange fires when the browser window
+  // regains focus or a DevTools panel is foregrounded — covers the "idle for
+  // a long time then back" scenario that the port-disconnect path may miss.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      forceRefreshRender();
+    }
   });
 });
 
@@ -188,3 +214,4 @@ chrome.runtime.onMessage.addListener((request) => {
 });
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkColorScheme);
+

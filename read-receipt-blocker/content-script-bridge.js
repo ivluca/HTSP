@@ -1,6 +1,13 @@
+// ⚠️  FEATURE TEMPORARILY DISABLED
+// This file is NOT registered in manifest.json (content_scripts) and will
+// not run in any page.  Re-enable by adding an entry under "content_scripts"
+// in manifest.json (without world: "MAIN") when the Read Receipt Blocker
+// feature is turned back on.
+//
 // Read Receipt Blocker — ISOLATED world bridge script
 // Has access to chrome.storage and chrome.runtime
 // Bridges state to the MAIN world via CustomEvent
+
 
 (function () {
   'use strict';

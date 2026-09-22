@@ -5,7 +5,6 @@ let blockedCount = 0, sessionBlocked = 0, isEnabled = false, isTypingBlocked = f
 // ── Feature Manager ─────────────────────────────────────────────────────────
 const FEATURES = [
   { id: 'tab-manager-container', label: 'Tab Manager' },
-  { id: 'chatgpt-frame',         label: 'ChatGPT' },
   { id: 'gemini-frame',          label: 'Gemini' },
   { id: 'json-viewer-container', label: 'JSON Viewer' },
 ];

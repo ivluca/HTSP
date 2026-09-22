@@ -51,7 +51,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       },
       condition: {
         requestDomains: [
-          "chat.openai.com", "chatgpt.com", "openai.com",
           "gemini.google.com",
           "accounts.google.com"
         ],
@@ -85,6 +84,26 @@ const debounce = (func, delay) => {
 // Track whether a side panel is actually open. The tab cache is only ever
 // read by the panel, so there is no point rebuilding it (a full populated
 // getAll + session write) when nothing is listening.
+//
+// NOTE: We deliberately avoid keeping an in-memory `panelConnections` counter
+// because Chrome can terminate the service worker after ~30 s of idle.
+// When the SW restarts the counter resets to 0, so any tab events that fire
+// before the panel has had a chance to reconnect its port would be silently
+// dropped.  Instead we query the live extension contexts on every check —
+// this is always accurate regardless of how many times the SW has restarted.
+async function isSidePanelOpen() {
+  if (typeof chrome.runtime.getContexts !== 'function') {
+    // Fallback for older Chrome versions that don't support getContexts.
+    return true;
+  }
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ['SIDE_PANEL']
+  });
+  return contexts.length > 0;
+}
+
+// Keep panelConnections for the onConnect/onDisconnect bookkeeping that
+// triggers an immediate cache refresh when the panel first opens.
 let panelConnections = 0;
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -99,10 +118,11 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 const debouncedUpdateAndNotify = debounce(async () => {
-  if (panelConnections === 0) return; // no panel open → skip the rebuild
+  if (!(await isSidePanelOpen())) return; // no panel open → skip the rebuild
   await updateCache();
   sendMessageToSidePanel({ type: 'CACHE_UPDATED' });
 }, 150);
+
 
 // --- Comprehensive Listeners ---
 chrome.tabs.onCreated.addListener(() => debouncedUpdateAndNotify());

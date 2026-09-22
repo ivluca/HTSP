@@ -1,6 +1,13 @@
+// ⚠️  FEATURE TEMPORARILY DISABLED
+// This file is NOT registered in manifest.json (content_scripts) and will
+// not run in any page.  Re-enable by adding an entry under "content_scripts"
+// in manifest.json with world: "MAIN" when the Read Receipt Blocker feature
+// is turned back on.
+//
 // Read Receipt Blocker — MAIN world script
 // Overrides window.fetch and XHR before Google Chat code runs
 // Reads enabled state via CustomEvent bridge from the ISOLATED world script
+
 
 (function () {
   'use strict';

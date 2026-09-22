@@ -199,13 +199,50 @@ function requestRenderBrowserTabs() {
   renderTimeout = setTimeout(() => renderBrowserTabs(searchTerm).catch(console.error), 50);
 }
 
+/**
+ * Optimistically removes a single tab from the session cache without
+ * requiring a full cache rebuild from the service worker.  The service
+ * worker will eventually push a proper CACHE_UPDATED message that
+ * overwrites this with authoritative data, but this keeps the UI
+ * snappy immediately after a close action.
+ *
+ * Also cleans up in-memory selection state so that shift-click range
+ * selection and the group button don't operate on stale tab IDs.
+ * @param {number} tabId
+ */
+async function removeTabFromCache(tabId) {
+  // Clean up in-memory state first so subsequent renders are correct.
+  selectedTabs.delete(tabId);
+  if (lastClickedTabId === tabId) lastClickedTabId = null;
+
+  const cachedState = await chrome.storage.session.get('tabCache');
+  const cache = cachedState.tabCache;
+  if (!cache) return;
+  cache.windows = cache.windows.map(win => ({
+    ...win,
+    tabs: (win.tabs || []).filter(t => t.id !== tabId)
+  }));
+  await chrome.storage.session.set({ tabCache: cache });
+}
+
+
 let headerInitialised = false;
+// Set to true when a CACHE_UPDATED event arrives while the tab-manager panel
+// is hidden (user is on a different section).  switchTab() reads this flag and
+// triggers a fresh render so we never display stale data on re-entry.
+let pendingRenderWhileHidden = false;
 
 async function renderBrowserTabs(filter = '') {
   const container = document.getElementById('window-groups-container');
 
   // Bail out early before any async work when the tab manager isn't visible.
-  if (document.getElementById('tab-manager-container').classList.contains('hidden')) return;
+  // Record that a render was requested so switchTab() can trigger it on re-entry.
+  if (document.getElementById('tab-manager-container').classList.contains('hidden')) {
+    pendingRenderWhileHidden = true;
+    return;
+  }
+  pendingRenderWhileHidden = false;
+
 
   // Only show loader on the very first load.
   if (!container.hasChildNodes()) {
@@ -224,7 +261,18 @@ async function renderBrowserTabs(filter = '') {
     storage.collapsedGroups.forEach(id => collapsedGroups.add(id));
   }
 
+  // Prune stale group IDs from collapsedGroups — tab groups that have been
+  // deleted still linger in storage indefinitely otherwise.
+  const liveGroupIds = new Set(allTabGroups.map(g => g.id));
+  const staleIds = [...collapsedGroups].filter(id => !liveGroupIds.has(id));
+  if (staleIds.length > 0) {
+    staleIds.forEach(id => collapsedGroups.delete(id));
+    // Persist the cleaned-up set without awaiting — fire-and-forget is fine here.
+    chrome.storage.local.set({ collapsedGroups: Array.from(collapsedGroups) });
+  }
+
   // Build the header only once — subsequent renders just toggle button state.
+
   if (!headerInitialised) {
     setupTabManagerHeader();
     headerInitialised = true;
@@ -316,6 +364,7 @@ async function renderBrowserTabs(filter = '') {
         const tabIdsToUngroup = tabsInGroup.map(tab => tab.id);
         if (tabIdsToUngroup.length > 0) {
           await chrome.tabs.ungroup(tabIdsToUngroup);
+          requestRenderBrowserTabs();
         }
       });
       groupHeader.appendChild(ungroupAllBtn);
@@ -476,6 +525,10 @@ function createTabItem(tab, displayTitle) {
       // Tab was already closed elsewhere — nothing to do, the list refresh will drop it.
     }
     selectedTabs.delete(tab.id);
+    // Optimistically remove the closed tab from the session cache and re-render
+    // immediately, without waiting for the debounced service-worker message.
+    await removeTabFromCache(tab.id);
+    requestRenderBrowserTabs();
   });
 
   actions.append(closeBtn);
@@ -614,6 +667,11 @@ async function showContextMenu(x, y) {
         const tabsToDelete = Array.from(selectedTabs);
         if (tabsToDelete.length > 0) {
           await chrome.tabs.remove(tabsToDelete);
+          // Optimistically remove each closed tab from the cache and re-render
+          // immediately so the list doesn't stay stale waiting for the
+          // debounced service-worker CACHE_UPDATED message.
+          await Promise.all(tabsToDelete.map(id => removeTabFromCache(id)));
+          requestRenderBrowserTabs();
         }
       }
     }

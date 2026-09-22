@@ -4,8 +4,6 @@
   "manifest_version": 3,
   "description": "Help Tools Side Panel",
   "host_permissions": [
-    "*://*.openai.com/*",
-    "*://*.chatgpt.com/*",
     "*://*.google.com/*",
     "*://*.googleusercontent.com/*",
     "https://www.googletagmanager.com/*",
@@ -44,6 +42,6 @@
     "minimum_width": 324
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://*.openai.com/ https://*.chatgpt.com/ https://chatgpt.com/ https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/;"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://gemini.google.com/ https://accounts.google.com/ https://www.google.com/;"
   }
 }
