@@ -7,7 +7,7 @@
 **A Chrome extension that supercharges your browser's native Side Panel**  
 with a powerful Tab Manager, AI workspace, JSON viewer, and more.
 
-[![Version](https://img.shields.io/badge/version-3.9.0-6366f1?style=flat-square)](https://github.com/ivluca/HTSP)
+[![Version](https://img.shields.io/badge/version-4.0.0-6366f1?style=flat-square)](https://github.com/ivluca/HTSP)
 [![Manifest](https://img.shields.io/badge/Manifest-V3-brightgreen?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 

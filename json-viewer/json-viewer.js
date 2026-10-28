@@ -70,7 +70,7 @@
     // Auto-grow textarea only
     input.addEventListener('input', () => {
       input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+      input.style.height = Math.min(input.scrollHeight, 240) + 'px';
     });
 
     // Clear button — resets everything

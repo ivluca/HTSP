@@ -88,9 +88,11 @@ function switchTab(targetId) {
   allTabs.forEach(t => {
     if (t.dataset.target === targetId) {
       t.classList.add('active');
+      t.setAttribute('aria-selected', 'true');
       t.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     } else {
       t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
     }
   });
 }
@@ -136,6 +138,20 @@ function setupEventListeners() {
   });
 
   allTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.target)));
+
+  // Keyboard support for the tab bar (Enter/Space activate, arrows move).
+  allTabs.forEach(tab => tab.addEventListener('keydown', (e) => {
+    const visible = [...allTabs].filter(t => t.style.display !== 'none');
+    const i = visible.indexOf(tab);
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      switchTab(tab.dataset.target);
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const next = visible[(i + (e.key === 'ArrowRight' ? 1 : -1) + visible.length) % visible.length];
+      if (next) { next.focus(); switchTab(next.dataset.target); }
+    }
+  }));
 
   tabManagerContainer.addEventListener('click', async (e) => {
     if (!e.target.closest('.browser-tab-item')) {

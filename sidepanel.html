@@ -1,7 +1,9 @@
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <title>HTSP</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="tab-manager/tab-manager.css">
     <link rel="stylesheet" href="read-receipt-blocker/read-receipt-blocker.css">
@@ -9,14 +11,14 @@
   </head>
   <body>
     <div id="header">
-      <div class="tabs">
-        <div class="tab active" data-target="tab-manager-container">Tab Manager</div>
-        <div class="tab" data-target="gemini-frame">Gemini</div>
-        <div class="tab" data-target="json-viewer-container">JSON</div>
-        <div class="tab" data-target="read-receipt-container">Options</div>
+      <div class="tabs" role="tablist">
+        <div class="tab active" role="tab" tabindex="0" aria-selected="true" data-target="tab-manager-container">Tab Manager</div>
+        <div class="tab" role="tab" tabindex="0" aria-selected="false" data-target="gemini-frame">Gemini</div>
+        <div class="tab" role="tab" tabindex="0" aria-selected="false" data-target="json-viewer-container">JSON</div>
+        <div class="tab" role="tab" tabindex="0" aria-selected="false" data-target="read-receipt-container">Options</div>
       </div>
       <div class="dropdown">
-        <button id="dropdown-btn" class="dropdown-btn">
+        <button id="dropdown-btn" class="dropdown-btn" aria-label="More tabs" aria-haspopup="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
           </svg>
@@ -30,7 +32,7 @@
     <div class="iframe-container">
       <div id="tab-manager-container" class="ai-frame">
         <div id="tab-manager-header"></div>
-        <label for="search-box"></label>
+        <label for="search-box" class="sr-only">Search tabs</label>
         <input type="text" id="search-box" placeholder="Search tabs...">
         <div id="window-groups-container">
           <!-- Window groups will be rendered here by JS -->
@@ -49,7 +51,7 @@
         <div id="jv-error-bar"></div>
         <div id="jv-input-area">
           <div id="jv-input-wrap">
-            <textarea id="jv-input" rows="1" placeholder="Paste JSON here…"></textarea>
+            <textarea id="jv-input" rows="3" placeholder="Paste JSON here…"></textarea>
             <button id="jv-clear-btn" title="Clear">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
